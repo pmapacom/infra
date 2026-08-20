@@ -1,0 +1,87 @@
+# Full TEST CONTOUR: gateway + auth + user + their data tiers on one private
+# network. Exercises the real request path app → nginx → auth (verify) → user.
+# Only the gateway is published; every back-end and data tier is unreachable from
+# the host (enforces "back-ends only via the gateway").
+#
+#   docker compose up --build -d
+name: pmapa-contour
+
+services:
+  # ---- auth data tier ----
+  auth-postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: auth
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: auth
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U auth -d auth"]
+      interval: 3s
+      timeout: 3s
+      retries: 15
+
+  auth-redis:
+    image: redis:7-alpine
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a $${REDIS_PASSWORD} ping | grep -q PONG"]
+      interval: 3s
+      timeout: 3s
+      retries: 15
+
+  # ---- user data tier ----
+  user-postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: user
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d user"]
+      interval: 3s
+      timeout: 3s
+      retries: 15
+
+  # ---- services ----
+  auth:
+    build:
+      # Repo root so the Dockerfile can copy the local proto module.
+      context: ../../..
+      dockerfile: auth/Dockerfile
+    environment:
+      DATABASE_URL: "postgres://auth:${POSTGRES_PASSWORD}@auth-postgres:5432/auth?sslmode=disable"
+      REDIS_URL: "redis://:${REDIS_PASSWORD}@auth-redis:6379/0"
+      AUTH_HTTP_ADDR: ":8080"
+      AUTH_SIGNING_KEY_SEED: ${AUTH_SIGNING_KEY_SEED}
+      AUTH_ACCESS_TTL: "10m"
+    depends_on:
+      auth-postgres:
+        condition: service_healthy
+      auth-redis:
+        condition: service_healthy
+    # No published ports — reachable only via the gateway.
+
+  user:
+    build:
+      context: ../../..
+      dockerfile: user/Dockerfile
+    environment:
+      DATABASE_URL: "postgres://user:${POSTGRES_PASSWORD}@user-postgres:5432/user?sslmode=disable"
+      USER_HTTP_ADDR: ":8080"
+    depends_on:
+      user-postgres:
+        condition: service_healthy
+    # No published ports — reachable only via the gateway.
+
+  gateway:
+    image: nginx:alpine
+    volumes:
+      - ../../gateway/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ../../gateway/snippets:/etc/nginx/gateway/snippets:ro
+    ports:
+      - "${GATEWAY_PORT:-8088}:8080"
+    depends_on:
+      - auth
+      - user

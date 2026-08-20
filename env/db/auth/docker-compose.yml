@@ -1,0 +1,58 @@
+# Data tier for the auth service — the STATEFUL instances.
+#
+# Deliberately separate from the app tier: this compose brings up ONE logical
+# Postgres + Redis (a single source of truth), while the auth service itself
+# runs as N stateless replicas elsewhere and connects here via DATABASE_URL /
+# REDIS_URL. In the cloud this maps to managed Postgres + Redis (or these
+# containers on a dedicated data host); the app instances scale independently.
+#
+# All config comes from the environment (.env) — no secrets baked into the image.
+name: pmapa-auth-data
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      # Deterministic, safe defaults.
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # Exposed to the container so the healthcheck below can authenticate.
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    # Password-protected + AOF persistence (the revocation denylist should
+    # survive a restart; rate-limit counters are cheap to lose).
+    command:
+      - redis-server
+      - --requirepass
+      - ${REDIS_PASSWORD}
+      - --appendonly
+      - "yes"
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a $${REDIS_PASSWORD} ping | grep -q PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:
+  redisdata:

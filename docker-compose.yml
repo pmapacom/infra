@@ -1,0 +1,517 @@
+# PMapa — full local dev stack (one command brings up the whole backend).
+#
+#   cp .env.example .env      # a ready dev .env is already committed for convenience
+#   docker compose up --build -d
+#   docker compose ps         # wait for everything healthy
+#
+# Request path mirrors production exactly:
+#
+#     Flutter app ─► gateway (nginx, :8088) ─► auth (verify) ─► inject X-User-Id
+#                                            └─► route by domain ─► user / travel / …
+#
+# Design invariants (kept identical to the cluster):
+#   • Only the GATEWAY is the front door for services — auth & user publish NO
+#     ports, so they are reachable only through nginx (client identity is never
+#     trusted; the gateway strips/injects X-User-Id).
+#   • The data tier is the single source of truth, on named volumes so local data
+#     SURVIVES restarts (unlike the ephemeral test contour in env/test/contour).
+#   • Postgres/Redis ARE published to localhost here — dev-only, so you can psql /
+#     redis-cli and inspect state. They bind 127.0.0.1 (not reachable off-box).
+#
+# Point the Flutter app / contour tests at http://localhost:8088:
+#   flutter run --dart-define=CONTOUR_URL=http://localhost:8088
+name: pmapa
+
+services:
+  # ────────────────────────── auth data tier ──────────────────────────
+  auth-postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: auth
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: auth
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+    ports:
+      - "127.0.0.1:${AUTH_POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - auth-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U auth -d auth"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+  auth-redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    # Password + AOF persistence: the revocation denylist should survive restarts.
+    command:
+      - redis-server
+      - --requirepass
+      - ${REDIS_PASSWORD}
+      - --appendonly
+      - "yes"
+    ports:
+      - "127.0.0.1:${AUTH_REDIS_PORT:-6379}:6379"
+    volumes:
+      - auth-redisdata:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a $${REDIS_PASSWORD} ping | grep -q PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+  # ────────────────────────── user data tier ──────────────────────────
+  user-postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: user
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+    # 5433 on the host so it runs alongside auth-postgres (5432).
+    ports:
+      - "127.0.0.1:${USER_POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - user-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d user"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+  # ───────────────────────────── travel data tier ─────────────────────
+  travel-postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: travel
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: travel
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+    # 5434 on the host so it runs alongside auth (5432) and user (5433).
+    ports:
+      - "127.0.0.1:${TRAVEL_POSTGRES_PORT:-5434}:5432"
+    volumes:
+      - travel-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U travel -d travel"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+  # ───────────────────────────── post data tier ───────────────────────
+  post-postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: post
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: post
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+    # 5435 on the host so it runs alongside auth (5432), user (5433), travel (5434).
+    ports:
+      - "127.0.0.1:${POST_POSTGRES_PORT:-5435}:5432"
+    volumes:
+      - post-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U post -d post"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+  # ───────────────────────────── store data tier ─────────────────
+  store-postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: store
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: store
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+    ports:
+      - "127.0.0.1:${STORE_POSTGRES_PORT:-5436}:5432"
+    volumes:
+      - store-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U store -d store"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+  # ───────────────────────────── message data tier ───────────────
+  message-postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: message
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: message
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+    ports:
+      - "127.0.0.1:${MESSAGE_POSTGRES_PORT:-5437}:5432"
+    volumes:
+      - message-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U message -d message"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+  # ───────────────────────────── media data tier ─────────────────
+  media-postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: media
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: media
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+    ports:
+      - "127.0.0.1:${MEDIA_POSTGRES_PORT:-5438}:5432"
+    volumes:
+      - media-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U media -d media"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+  # ───────────────────────────── dev mail ─────────────────────────────
+  # Mailpit catches all outgoing mail (password resets) so no real SMTP or
+  # credentials are needed locally. Inbox UI: http://localhost:8025.
+  mailpit:
+    image: axllent/mailpit
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${MAILPIT_SMTP_PORT:-1025}:1025"
+      - "127.0.0.1:${MAILPIT_UI_PORT:-8025}:8025"
+
+  # ──────────────────────── media object storage ──────────────────────
+  # Local MinIO stands in for S3 so photo upload works out of the box.
+  # Console: http://localhost:9001 (login minioadmin / minioadmin).
+  minio:
+    image: quay.io/minio/minio
+    restart: unless-stopped
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    ports:
+      - "127.0.0.1:${MINIO_PORT:-9000}:9000"
+      - "127.0.0.1:${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+  # One-shot: creates the media bucket, then exits.
+  minio-init:
+    image: quay.io/minio/mc
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-minioadmin} ${MINIO_ROOT_PASSWORD:-minioadmin} &&
+      mc mb --ignore-existing local/${MEDIA_S3_BUCKET:-pmapa-media}
+      "
+
+  # ───────────────────────────── services ─────────────────────────────
+  auth:
+    build:
+      # Repo root: the Dockerfile copies the local proto module (replace ../proto).
+      context: .
+      dockerfile: auth/Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: "postgres://auth:${POSTGRES_PASSWORD}@auth-postgres:5432/auth?sslmode=disable"
+      REDIS_URL: "redis://:${REDIS_PASSWORD}@auth-redis:6379/0"
+      AUTH_HTTP_ADDR: ":8080"
+      AUTH_SIGNING_KEY_SEED: ${AUTH_SIGNING_KEY_SEED}
+      AUTH_ACCESS_TTL: "10m"
+      # Password-reset emails go through the notification service (it owns
+      # templates + SMTP). Set empty to log tokens instead of emailing.
+      AUTH_NOTIFICATION_URL: ${AUTH_NOTIFICATION_URL-http://notification:8080}
+      # Account-deletion fan-out: erase the user's data in every domain service.
+      AUTH_USER_URL: ${AUTH_USER_URL-http://user:8080}
+      AUTH_POST_URL: ${AUTH_POST_URL-http://post:8080}
+      AUTH_TRAVEL_URL: ${AUTH_TRAVEL_URL-http://travel:8080}
+      AUTH_MESSAGE_URL: ${AUTH_MESSAGE_URL-http://message:8080}
+      AUTH_MEDIA_URL: ${AUTH_MEDIA_URL-http://media:8080}
+      # Social login (Sign in with Google/Apple): comma-separated accepted
+      # client ids per provider; empty ⇒ that provider is disabled.
+      AUTH_OIDC_GOOGLE_CLIENT_IDS: ${AUTH_OIDC_GOOGLE_CLIENT_IDS:-}
+      AUTH_OIDC_APPLE_CLIENT_IDS: ${AUTH_OIDC_APPLE_CLIENT_IDS:-}
+    depends_on:
+      auth-postgres:
+        condition: service_healthy
+      auth-redis:
+        condition: service_healthy
+      notification:
+        condition: service_started
+      user:
+        condition: service_started
+    # No published ports — reachable only via the gateway.
+
+  user:
+    build:
+      context: .
+      dockerfile: user/Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: "postgres://user:${POSTGRES_PASSWORD}@user-postgres:5432/user?sslmode=disable"
+      USER_HTTP_ADDR: ":8080"
+      USER_STATS_URL: ${USER_STATS_URL-http://stats:8080}
+      USER_NOTIFICATION_URL: ${USER_NOTIFICATION_URL-http://notification:8080}
+      # Comma-separated moderator user ids (empty = no admins). Set to your dev
+      # user id to unlock the in-app Moderation queue.
+      USER_ADMIN_IDS: ${USER_ADMIN_IDS:-}
+    depends_on:
+      user-postgres:
+        condition: service_healthy
+      stats:
+        condition: service_started
+      notification:
+        condition: service_started
+    # No published ports — reachable only via the gateway.
+
+  travel:
+    build:
+      context: .
+      dockerfile: travel/Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: "postgres://travel:${POSTGRES_PASSWORD}@travel-postgres:5432/travel?sslmode=disable"
+      TRAVEL_HTTP_ADDR: ":8080"
+      TRAVEL_STATS_URL: ${TRAVEL_STATS_URL-http://stats:8080}
+    depends_on:
+      travel-postgres:
+        condition: service_healthy
+      stats:
+        condition: service_started
+    # No published ports — reachable only via the gateway.
+
+  post:
+    build:
+      context: .
+      dockerfile: post/Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: "postgres://post:${POSTGRES_PASSWORD}@post-postgres:5432/post?sslmode=disable"
+      POST_HTTP_ADDR: ":8080"
+      POST_USER_URL: "http://user:8080"   # feed followees, in-cluster
+      POST_STATS_URL: ${POST_STATS_URL-http://stats:8080}
+      POST_NOTIFICATION_URL: ${POST_NOTIFICATION_URL-http://notification:8080}
+    depends_on:
+      post-postgres:
+        condition: service_healthy
+      user:
+        condition: service_started
+      stats:
+        condition: service_started
+      notification:
+        condition: service_started
+    # No published ports — reachable only via the gateway.
+
+  store:
+    build:
+      context: .
+      dockerfile: store/Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: "postgres://store:${POSTGRES_PASSWORD}@store-postgres:5432/store?sslmode=disable"
+      STORE_HTTP_ADDR: ":8080"
+      STORE_STATS_URL: ${STORE_STATS_URL-http://stats:8080}
+    depends_on:
+      store-postgres:
+        condition: service_healthy
+      stats:
+        condition: service_started
+    # No published ports — reachable only via the gateway.
+
+  message:
+    build:
+      context: .
+      dockerfile: message/Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: "postgres://message:${POSTGRES_PASSWORD}@message-postgres:5432/message?sslmode=disable"
+      MESSAGE_HTTP_ADDR: ":8080"
+      # Fire-and-forget "message.new" events; empty ⇒ disabled.
+      MESSAGE_NOTIFICATION_URL: ${MESSAGE_NOTIFICATION_URL-http://notification:8080}
+      MESSAGE_STATS_URL: ${MESSAGE_STATS_URL-http://stats:8080}
+      MESSAGE_USER_URL: ${MESSAGE_USER_URL-http://user:8080}   # DM block gate
+    depends_on:
+      message-postgres:
+        condition: service_healthy
+      notification:
+        condition: service_started
+      stats:
+        condition: service_started
+      user:
+        condition: service_started
+    # No published ports — reachable only via the gateway.
+
+  media:
+    build:
+      context: .
+      dockerfile: media/Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: "postgres://media:${POSTGRES_PASSWORD}@media-postgres:5432/media?sslmode=disable"
+      MEDIA_HTTP_ADDR: ":8080"
+      # S3-compatible object storage — defaults to the local MinIO container.
+      # Override MEDIA_S3_* in .env to point at a real provider; set
+      # MEDIA_S3_ENDPOINT= (empty) to fall back to Postgres blobs.
+      MEDIA_S3_ENDPOINT: ${MEDIA_S3_ENDPOINT-http://minio:9000}
+      MEDIA_S3_REGION: ${MEDIA_S3_REGION:-us-east-1}
+      MEDIA_S3_BUCKET: ${MEDIA_S3_BUCKET:-pmapa-media}
+      MEDIA_S3_ACCESS_KEY: ${MEDIA_S3_ACCESS_KEY:-minioadmin}
+      MEDIA_S3_SECRET_KEY: ${MEDIA_S3_SECRET_KEY:-minioadmin}
+      MEDIA_S3_PREFIX: ${MEDIA_S3_PREFIX:-media/}
+      MEDIA_S3_PATH_STYLE: ${MEDIA_S3_PATH_STYLE:-true}
+    depends_on:
+      media-postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    # No published ports — reachable only via the gateway.
+
+  # ─────────────────────────── notification ───────────────────────────
+  # INTERNAL-ONLY: owns email templates + SMTP delivery. Called s2s (auth →
+  # password resets); no gateway route, no published port. Mail lands in the
+  # local Mailpit by default — point NOTIFICATION_SMTP_* at a real relay in
+  # .env, or set NOTIFICATION_SMTP_HOST= (empty) to log emails instead.
+  notification:
+    build:
+      context: .
+      dockerfile: notification/Dockerfile
+    restart: unless-stopped
+    environment:
+      NOTIFICATION_HTTP_ADDR: ":8080"
+      NOTIFICATION_SMTP_HOST: ${NOTIFICATION_SMTP_HOST-mailpit}
+      NOTIFICATION_SMTP_PORT: ${NOTIFICATION_SMTP_PORT:-1025}
+      NOTIFICATION_SMTP_USERNAME: ${NOTIFICATION_SMTP_USERNAME:-}
+      NOTIFICATION_SMTP_PASSWORD: ${NOTIFICATION_SMTP_PASSWORD:-}
+      NOTIFICATION_SMTP_FROM: ${NOTIFICATION_SMTP_FROM:-PMapa <no-reply@pmapa.app>}
+      NOTIFICATION_RESET_URL_BASE: ${NOTIFICATION_RESET_URL_BASE:-}
+      NOTIFICATION_DATABASE_URL: "postgres://notification:${POSTGRES_PASSWORD}@notification-postgres:5432/notification?sslmode=disable"
+    depends_on:
+      mailpit:
+        condition: service_started
+      notification-postgres:
+        condition: service_healthy
+
+  notification-postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: notification
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: notification
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+    ports:
+      - "127.0.0.1:${NOTIFICATION_POSTGRES_PORT:-5439}:5432"
+    volumes:
+      - notification-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U notification -d notification"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+  # ───────────────────────── telegrambot (ops) ─────────────────────────
+  # Ops bot: polls every service's /readyz, /internal/logz and /internal/stats,
+  # alerts to Telegram on a down service or new WARN+ logs, and posts an
+  # aggregated status+stats report on a timer. Off by default — enable with
+  # `docker compose --profile ops up` after setting TELEGRAM_BOT_TOKEN/CHAT_ID.
+  telegrambot:
+    build:
+      context: .
+      dockerfile: telegrambot/Dockerfile
+    restart: unless-stopped
+    profiles: ["ops"]
+    environment:
+      TELEGRAM_HTTP_ADDR: ":8080"
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+      TELEGRAM_POLL_INTERVAL: ${TELEGRAM_POLL_INTERVAL:-30s}
+      TELEGRAM_REPORT_INTERVAL: ${TELEGRAM_REPORT_INTERVAL:-24h}
+      TELEGRAM_ALERT_COOLDOWN: ${TELEGRAM_ALERT_COOLDOWN:-5m}
+      TELEGRAM_SERVICES: >-
+        auth=http://auth:8080,user=http://user:8080,travel=http://travel:8080,
+        post=http://post:8080,message=http://message:8080,store=http://store:8080,
+        media=http://media:8080,notification=http://notification:8080,stats=http://stats:8080
+
+  # ────────────────────────────── stats ───────────────────────────────
+  # INTERNAL-ONLY metrics store: services push named metrics (Set/Inc) and
+  # read them back (Get/BatchGet); values live in stats-redis. No gateway
+  # route, no published port.
+  stats-redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    # Password + AOF persistence: the metrics should survive restarts.
+    command:
+      - redis-server
+      - --requirepass
+      - ${REDIS_PASSWORD}
+      - --appendonly
+      - "yes"
+    volumes:
+      - stats-redisdata:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a $${REDIS_PASSWORD} ping | grep -q PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+  stats:
+    build:
+      context: .
+      dockerfile: stats/Dockerfile
+    restart: unless-stopped
+    environment:
+      REDIS_URL: "redis://:${REDIS_PASSWORD}@stats-redis:6379/0"
+      STATS_HTTP_ADDR: ":8080"
+    depends_on:
+      stats-redis:
+        condition: service_healthy
+
+  # ───────────────────────────── gateway ──────────────────────────────
+  gateway:
+    image: nginx:alpine
+    restart: unless-stopped
+    volumes:
+      - ./env/gateway/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./env/gateway/snippets:/etc/nginx/gateway/snippets:ro
+    ports:
+      - "${GATEWAY_PORT:-8088}:8080"
+    depends_on:
+      - auth
+      - user
+      - travel
+
+volumes:
+  auth-pgdata:
+  auth-redisdata:
+  stats-redisdata:
+  user-pgdata:
+  travel-pgdata:
+  post-pgdata:
+  store-pgdata:
+  message-pgdata:
+  media-pgdata:
+  notification-pgdata:
+  minio-data:

@@ -1,0 +1,32 @@
+# Data tier for the travel service — the STATEFUL instance.
+#
+# Same topology as user (see env/db/user): ONE logical Postgres as the single
+# source of truth, while the travel service runs as N stateless replicas
+# elsewhere and connects here via DATABASE_URL. No Redis — the travel service
+# holds no ephemeral security state. In the cloud this maps to managed Postgres.
+#
+# All config comes from the environment (.env) — no secrets baked into the image.
+name: pmapa-travel-data
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+    # Default host port 5434 so it can run alongside auth (5432) and user (5433).
+    ports:
+      - "${POSTGRES_PORT:-5434}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:
