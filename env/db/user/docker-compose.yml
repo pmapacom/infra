@@ -1,0 +1,32 @@
+# Data tier for the user service — the STATEFUL instance.
+#
+# Same topology as auth (see env/db/auth): ONE logical Postgres as the single
+# source of truth, while the user service runs as N stateless replicas elsewhere
+# and connects here via DATABASE_URL. No Redis — the user service holds no
+# ephemeral security state. In the cloud this maps to managed Postgres.
+#
+# All config comes from the environment (.env) — no secrets baked into the image.
+name: pmapa-user-data
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+    # Default host port 5433 so it can run alongside the auth data tier (5432).
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:

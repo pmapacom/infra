@@ -1,0 +1,16 @@
+go 1.25.0
+
+use (
+	./auth
+	./media
+	./message
+	./notification
+	./post
+	./proto/gen/go
+	./stats
+	./store
+	./svckit
+	./telegrambot
+	./travel
+	./user
+)

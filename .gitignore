@@ -1,0 +1,6 @@
+# IDE / OS
+.idea/
+.DS_Store
+
+# scratch / to-be-removed
+_to_delete/
