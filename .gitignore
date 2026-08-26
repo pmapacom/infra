@@ -4,3 +4,10 @@
 
 # scratch / to-be-removed
 _to_delete/
+
+# secrets — never commit real env files (only *.env.example is tracked)
+.env
+
+# internal engineering docs — kept local, not published
+AUDIT.md
+REVIEW.md
