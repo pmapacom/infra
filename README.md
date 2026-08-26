@@ -6,6 +6,9 @@ A travel-journal app: a Flutter client (`app/`) over a Go + Connect-RPC
 microservice backend, fronted by an nginx gateway that verifies tokens and is the
 single front door for every service.
 
+📦 **Infra repo:** <https://github.com/pmapacom/infra> — the public deploy units
+(gateway config, per-service data tiers, cloud composes, test contours).
+
 ## Repository layout
 
 | Path | What |
