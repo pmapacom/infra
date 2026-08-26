@@ -1,0 +1,23 @@
+# Cloud app tier for the user service — stateless, scale to N replicas.
+# State lives in managed Postgres (DATABASE_URL). No published port — via gateway.
+#
+#   cp .env.example .env && $EDITOR .env
+#   docker compose pull && docker compose up -d
+name: pmapa-user
+
+services:
+  user:
+    image: ${IMAGE:-ghcr.io/pmapa/user:latest}
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL to the managed Postgres}
+      USER_HTTP_ADDR: ":8080"
+      USER_STATS_URL: ${USER_STATS_URL-http://stats:8080}
+      USER_NOTIFICATION_URL: ${USER_NOTIFICATION_URL-http://notification:8080}
+      # Comma-separated moderator user ids (empty = no admins).
+      USER_ADMIN_IDS: ${USER_ADMIN_IDS:-}
+
+networks:
+  default:
+    name: pmapa
+    external: true

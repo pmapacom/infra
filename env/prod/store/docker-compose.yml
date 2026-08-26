@@ -1,0 +1,17 @@
+# Cloud app tier for the store service — stateless, scale to N replicas.
+# State lives in managed Postgres (DATABASE_URL). No published port — via gateway.
+name: pmapa-store
+
+services:
+  store:
+    image: ${IMAGE:-ghcr.io/pmapa/store:latest}
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL to the managed Postgres}
+      STORE_HTTP_ADDR: ":8080"
+      STORE_STATS_URL: ${STORE_STATS_URL-http://stats:8080}
+
+networks:
+  default:
+    name: pmapa
+    external: true

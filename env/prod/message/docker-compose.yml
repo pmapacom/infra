@@ -1,0 +1,19 @@
+# Cloud app tier for the message service — stateless, scale to N replicas.
+# State lives in managed Postgres (DATABASE_URL). No published port — via gateway.
+name: pmapa-message
+
+services:
+  message:
+    image: ${IMAGE:-ghcr.io/pmapa/message:latest}
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL to the managed Postgres}
+      MESSAGE_HTTP_ADDR: ":8080"
+      MESSAGE_NOTIFICATION_URL: ${MESSAGE_NOTIFICATION_URL-http://notification:8080}
+      MESSAGE_STATS_URL: ${MESSAGE_STATS_URL-http://stats:8080}
+      MESSAGE_USER_URL: ${MESSAGE_USER_URL-http://user:8080}
+
+networks:
+  default:
+    name: pmapa
+    external: true

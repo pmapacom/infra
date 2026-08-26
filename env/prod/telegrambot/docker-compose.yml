@@ -1,0 +1,22 @@
+# Cloud ops bot — polls every service's /readyz, /internal/logz, /internal/stats,
+# alerts to Telegram on a down service or new WARN+ logs, and posts a periodic
+# status+stats report. Optional; deploy one instance (it holds no shared state).
+name: pmapa-telegrambot
+
+services:
+  telegrambot:
+    image: ${IMAGE:-ghcr.io/pmapa/telegrambot:latest}
+    restart: unless-stopped
+    environment:
+      TELEGRAM_HTTP_ADDR: ":8080"
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?set the Telegram bot token}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:?set the Telegram chat id}
+      TELEGRAM_POLL_INTERVAL: ${TELEGRAM_POLL_INTERVAL:-30s}
+      TELEGRAM_REPORT_INTERVAL: ${TELEGRAM_REPORT_INTERVAL:-24h}
+      TELEGRAM_ALERT_COOLDOWN: ${TELEGRAM_ALERT_COOLDOWN:-5m}
+      TELEGRAM_SERVICES: ${TELEGRAM_SERVICES:-auth=http://auth:8080,user=http://user:8080,travel=http://travel:8080,post=http://post:8080,message=http://message:8080,store=http://store:8080,media=http://media:8080,notification=http://notification:8080,stats=http://stats:8080}
+
+networks:
+  default:
+    name: pmapa
+    external: true

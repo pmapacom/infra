@@ -1,0 +1,17 @@
+# Cloud app tier for the stats service — stateless, scale to N replicas.
+# INTERNAL-ONLY metric store; values live in the managed Redis (REDIS_URL).
+# No gateway route, no published port — reachable only inside the cluster.
+name: pmapa-stats
+
+services:
+  stats:
+    image: ${IMAGE:-ghcr.io/pmapa/stats:latest}
+    restart: unless-stopped
+    environment:
+      REDIS_URL: ${REDIS_URL:?set REDIS_URL to the managed Redis}
+      STATS_HTTP_ADDR: ":8080"
+
+networks:
+  default:
+    name: pmapa
+    external: true
