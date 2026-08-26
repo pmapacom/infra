@@ -1,0 +1,34 @@
+# Data tier for the notification service — the STATEFUL instance.
+#
+# Same topology as user/media (see env/db/user): ONE logical Postgres as the
+# single source of truth (in-app activity feed, push tokens/prefs, delivery
+# bookkeeping), while the notification service runs as N stateless replicas
+# elsewhere and connects here via NOTIFICATION_DATABASE_URL. No Redis — SMTP is
+# stateless. In the cloud this maps to managed Postgres.
+#
+# All config comes from the environment (.env) — no secrets baked into the image.
+name: pmapa-notification-data
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+    # Default host port 5439 so it can run alongside auth (5432), user (5433),
+    # travel (5434), post (5435), store (5436), message (5437), media (5438).
+    ports:
+      - "${POSTGRES_PORT:-5439}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:
