@@ -40,6 +40,41 @@ Each store sits on its **own internal network** — nothing else can reach it:
 | `notification-data` | notification-postgres | notification |
 | `stats-data` | stats-redis | stats |
 
+## Environment
+
+Copy `.env.example` → `.env` and set **every** value below — all are `${VAR:?}`,
+so the compose refuses to start with any left blank. Each password must equal the
+one in the matching service's connection string (`env/prod/<svc>/.env`); the
+reference block at the bottom of `.env.example` lists those strings.
+
+### Postgres passwords (one per service)
+
+| Variable | Store |
+|----------|-------|
+| `AUTH_POSTGRES_PASSWORD` | auth-postgres |
+| `USER_POSTGRES_PASSWORD` | user-postgres |
+| `TRAVEL_POSTGRES_PASSWORD` | travel-postgres |
+| `POST_POSTGRES_PASSWORD` | post-postgres |
+| `STORE_POSTGRES_PASSWORD` | store-postgres |
+| `MESSAGE_POSTGRES_PASSWORD` | message-postgres |
+| `MEDIA_POSTGRES_PASSWORD` | media-postgres |
+| `NOTIFICATION_POSTGRES_PASSWORD` | notification-postgres |
+
+### Redis passwords
+
+| Variable | Store |
+|----------|-------|
+| `AUTH_REDIS_PASSWORD` | auth-redis |
+| `STATS_REDIS_PASSWORD` | stats-redis |
+
+### MinIO (S3 for media)
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `MINIO_ROOT_USER` | `pmapa` | S3 access key (→ media's `MEDIA_S3_ACCESS_KEY`). |
+| `MINIO_ROOT_PASSWORD` | (none — set it) | S3 secret key (→ media's `MEDIA_S3_SECRET_KEY`). |
+| `MEDIA_S3_BUCKET` | `pmapa-media` | Bucket `minio-init` creates (→ media's `MEDIA_S3_BUCKET`). |
+
 ## Deploy — bring this up **first**
 
 ```bash
