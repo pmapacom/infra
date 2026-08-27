@@ -47,6 +47,12 @@ so the compose refuses to start with any left blank. Each password must equal th
 one in the matching service's connection string (`env/prod/<svc>/.env`); the
 reference block at the bottom of `.env.example` lists those strings.
 
+> ⚠ **Keep Postgres + Redis passwords URL-safe.** They're embedded in
+> `postgres://user:PASS@host` / `redis://:PASS@host` URLs, so reserved characters
+> (`@ : / ? # %`) break parsing — either avoid them or percent-encode in the URL.
+> Simplest is a safe alphabet: `openssl rand -hex 32`. MinIO's password is passed
+> via the environment, so it can contain anything.
+
 ### Postgres passwords (one per service)
 
 | Variable | Store |
