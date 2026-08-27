@@ -6,6 +6,7 @@ services:
   stats:
     image: ghcr.io/pmapa/stats:latest
     restart: unless-stopped
+    networks: [pmapa, stats-data]
     environment:
       # ── fill by hand in .env ──
       REDIS_URL: ${REDIS_URL:?set REDIS_URL to the managed Redis}
@@ -13,6 +14,7 @@ services:
       STATS_HTTP_ADDR: ":8080"
 
 networks:
-  default:
-    name: pmapa
+  pmapa:
+    external: true
+  stats-data:
     external: true

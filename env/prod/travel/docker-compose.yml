@@ -6,6 +6,7 @@ services:
   travel:
     image: ghcr.io/pmapa/travel:latest
     restart: unless-stopped
+    networks: [pmapa, travel-data]
     environment:
       # ── fill by hand in .env ──
       DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL to the managed Postgres}
@@ -14,6 +15,7 @@ services:
       TRAVEL_STATS_URL: "http://stats:8080"
 
 networks:
-  default:
-    name: pmapa
+  pmapa:
+    external: true
+  travel-data:
     external: true

@@ -7,6 +7,7 @@ services:
   notification:
     image: ghcr.io/pmapa/notification:latest
     restart: unless-stopped
+    networks: [pmapa, notification-data]
     environment:
       # ── fill by hand in .env ──
       NOTIFICATION_DATABASE_URL: ${NOTIFICATION_DATABASE_URL:?set the managed Postgres URL}
@@ -21,6 +22,7 @@ services:
       NOTIFICATION_SMTP_FROM: "PMapa <no-reply@pmapa.app>"
 
 networks:
-  default:
-    name: pmapa
+  pmapa:
+    external: true
+  notification-data:
     external: true

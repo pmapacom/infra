@@ -6,6 +6,7 @@ services:
   store:
     image: ghcr.io/pmapa/store:latest
     restart: unless-stopped
+    networks: [pmapa, store-data]
     environment:
       # ── fill by hand in .env ──
       DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL to the managed Postgres}
@@ -14,6 +15,7 @@ services:
       STORE_STATS_URL: "http://stats:8080"
 
 networks:
-  default:
-    name: pmapa
+  pmapa:
+    external: true
+  store-data:
     external: true

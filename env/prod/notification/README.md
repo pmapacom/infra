@@ -2,7 +2,7 @@
 
 The **stateless** notification service (outbound email via SMTP + in-app activity
 feed + push tokens/prefs), deployed from a pre-built image. Mirror of the data
-tier in [env/db/notification](../../db/notification). INTERNAL-only for `Notify` /
+tier in [env/prod/infra](../infra). INTERNAL-only for `Notify` /
 `SendEmail` s2s; its read/prefs RPCs are gateway-routed. No published port. Scale:
 `docker compose up -d --scale notification=3`.
 
@@ -39,9 +39,9 @@ fails if unset.
 
 ## Requirements
 
-- Managed **PostgreSQL** (via `NOTIFICATION_DATABASE_URL`) — see [env/db/notification](../../db/notification).
+- **PostgreSQL** (via `NOTIFICATION_DATABASE_URL`) — see [env/prod/infra](../infra).
 - An **SMTP relay** (via `NOTIFICATION_SMTP_*`) for real email; logs instead when host is empty.
-- The shared external `pmapa` network.
+- Networks: `pmapa` (service RPC) + `notification-data` (its store) — see [env/prod/infra](../infra).
 
 ## Deploy
 

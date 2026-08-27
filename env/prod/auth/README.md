@@ -2,7 +2,7 @@
 
 The **stateless** auth service (identity, sessions, DPoP, account deletion),
 deployed from a pre-built image. Mirror of the data tier in
-[env/db/auth](../../db/auth). No published port — reachable only through the
+[env/prod/infra](../infra). No published port — reachable only through the
 [gateway](../gateway). Scale horizontally: `docker compose up -d --scale auth=3`.
 
 Full env-var reference (from the code) lives in the service repo:
@@ -37,8 +37,8 @@ Vars marked **must set** are `${VAR:?}` in the compose — boot fails if unset.
 
 ## Requirements
 
-- Managed **PostgreSQL** (via `DATABASE_URL`) and **Redis** (via `REDIS_URL`) — see [env/db/auth](../../db/auth).
-- The shared external `pmapa` network (see [../README.md](../README.md)).
+- **PostgreSQL** (via `DATABASE_URL`) and **Redis** (via `REDIS_URL`) — see [env/prod/infra](../infra).
+- Networks: `pmapa` (service RPC) + `auth-data` (its store) — both from [env/prod/infra](../infra); see [../README.md](../README.md).
 - For working password resets: a reachable `notification` service + its SMTP config.
 
 ## Deploy

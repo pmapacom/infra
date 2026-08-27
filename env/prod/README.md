@@ -1,22 +1,25 @@
 # env/prod — cloud deploy units (app tier)
 
-One `docker-compose.yml` **per service**, each deployable on its own. This is the
-**stateless app tier** — the mirror image of `env/db/*` (the stateful data tier):
+One `docker-compose.yml` **per service** (the stateless app tier), plus
+[`infra/`](infra) — the consolidated **data tier** for running the whole stack on
+one machine:
 
 ```
-        env/prod/<svc>   ── app tier   (this dir: pulls image, N replicas, no state)
-              │  DATABASE_URL / REDIS_URL
-        env/db/<svc>     ── data tier  (managed Postgres/Redis in cloud)
+        env/prod/<svc>   ── app tier    (pulls image, no state)
+              │  DATABASE_URL / REDIS_URL / S3
+        env/prod/infra   ── data tier   (all Postgres/Redis/MinIO on this box)
+                            └ later: extract a DB → managed, repoint one URL
 ```
 
-Unlike the root `docker-compose.yml` (which **builds** everything into one local
-stack), these composes **pull pre-built images** from a registry and take every
-secret + cross-service URL from the environment. Nothing is baked in.
+These composes **pull pre-built images** from a registry. Defaults (image, listen
+addr, in-cluster URLs, ports) are baked into each compose; only the values with no
+sensible default — secrets, connection strings — come from `.env`.
 
 ## What's here
 
 | Folder | Service | Published? |
 |--------|---------|------------|
+| `infra/` | **data tier** — all Postgres + Redis + MinIO (on-box) | no |
 | `gateway/` | nginx front door (auth_request → routes by domain) | **yes** — the only public port |
 | `auth/` | auth (EdDSA JWT + DPoP + refresh) — needs Postgres + Redis | no |
 | `user/` | user/profile + follow graph — needs Postgres | no |
@@ -34,30 +37,36 @@ the gateway** — none publish a host port. Cross-service calls use the service
 name as DNS (`http://user:8080`, `http://stats:8080`, …), resolved by the shared
 network below.
 
-## One shared network
+## Networks
 
-All services join a single **external** overlay network named `pmapa` so they can
-find each other by service name across the independent composes. Create it once
-per host/cluster before bringing anything up:
+- **`pmapa`** — one shared network for service-to-service RPC. Created once by
+  hand (below); every app service + the gateway join it.
+- **`<svc>-data`** — one isolated, `internal` network per data tier, **owned by
+  [`infra/`](infra)**. Only that service's app tier joins it, so a service can
+  reach its own store and nothing else. See [`infra/README.md`](infra/README.md).
 
-```bash
-docker network create pmapa          # or: docker network create -d overlay --attachable pmapa (swarm)
-```
+So each app service is on **two** networks: `pmapa` (peers) + its `<svc>-data`
+(its database).
 
-## Deploy
+## Deploy — infra first, gateway last
 
 ```bash
 # 1. one-time: the shared network + a registry login
 docker network create pmapa
 docker login ghcr.io
 
-# 2. per service: fill only the secrets/URLs in .env (the rest is baked in)
-cd env/prod/auth
+# 2. data tier — brings up all DBs/Redis/MinIO and creates the <svc>-data networks
+cd env/prod/infra
+cp .env.example .env && $EDITOR .env      # set all passwords
+docker compose up -d
+
+# 3. each service — fill its .env (connection strings already point at infra)
+cd ../auth
 cp .env.example .env && $EDITOR .env
 docker compose pull && docker compose up -d
-
 # repeat for user, travel, post, store, message, media, notification, stats
-# then bring up the front door last (no .env needed):
+
+# 4. the front door, last (no .env needed)
 cd ../gateway && docker compose up -d
 ```
 
@@ -76,9 +85,13 @@ cd env/prod/auth && docker compose up -d --scale auth=3
   `DATABASE_URL`/`REDIS_URL`, S3 + SMTP config. Everything else (listen addr,
   TTLs, in-cluster service URLs, ports, intervals) is baked into the compose;
   change it by editing the file, not the environment.
-- **Data tier.** `DATABASE_URL` / `REDIS_URL` must point at **managed** Postgres/
-  Redis (use `sslmode=require`). Do not run `env/db/*` per app replica — those are
-  a single data host, one per logical database.
+- **Data tier.** On one box it's [`infra/`](infra) — the `.env.example`
+  connection strings already point at those container names (`sslmode=disable`,
+  safe on-host). **Extracting a DB later:** stand up a managed instance, then in
+  that one service's `.env` swap the host and set `sslmode=require`, and drop its
+  store from `infra/`. The `<svc>-data` network boundary means nothing else moves.
+- **Passwords must match.** A service's `DATABASE_URL`/`REDIS_URL` password has to
+  equal the one `infra/.env` set for that store — keep the two in sync.
 - **Secrets.** `AUTH_SIGNING_KEY_SEED`, DB passwords, SMTP + S3 creds come from
   `.env` (git-ignored) — inject them from your secret manager in a real cluster.
 - **TLS.** This gateway speaks plain HTTP; terminate TLS at an outer edge (LB /

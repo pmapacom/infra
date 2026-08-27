@@ -13,6 +13,7 @@ services:
   auth:
     image: ghcr.io/pmapa/auth:latest
     restart: unless-stopped
+    networks: [pmapa, auth-data]   # pmapa: reach other services · auth-data: reach auth-postgres/redis
     environment:
       # ── fill these by hand in .env ──
       DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL to the managed Postgres}
@@ -31,8 +32,10 @@ services:
       AUTH_MESSAGE_URL: "http://message:8080"
       AUTH_MEDIA_URL: "http://media:8080"
 
-# All services share one external network so they resolve each other by name.
+# pmapa: shared app-tier network (services resolve each other by name).
+# auth-data: this service's isolated data network (owned by env/prod/infra).
 networks:
-  default:
-    name: pmapa
+  pmapa:
+    external: true
+  auth-data:
     external: true

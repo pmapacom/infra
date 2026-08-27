@@ -9,6 +9,7 @@ services:
   user:
     image: ghcr.io/pmapa/user:latest
     restart: unless-stopped
+    networks: [pmapa, user-data]
     environment:
       # ── fill by hand in .env ──
       DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL to the managed Postgres}
@@ -20,6 +21,7 @@ services:
       USER_NOTIFICATION_URL: "http://notification:8080"
 
 networks:
-  default:
-    name: pmapa
+  pmapa:
+    external: true
+  user-data:
     external: true

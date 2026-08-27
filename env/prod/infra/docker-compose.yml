@@ -1,0 +1,266 @@
+# env/prod/infra — the whole DATA TIER on one machine.
+#
+# Every stateful backing store for the stack: one Postgres per service, Redis for
+# auth + stats, and MinIO (S3) for media. Each store sits on its OWN isolated
+# network (`<svc>-data`, internal — no outside access); only that service's app
+# tier joins the matching network, so e.g. the post service can never reach auth's
+# database. Data lives on named volumes and survives restarts.
+#
+# This is the "single box" data tier. When you later extract a database to a
+# managed instance, just repoint that service's DATABASE_URL and drop its store
+# here — the network boundary is already in place, nothing else moves.
+#
+#   docker network create pmapa      # once, shared by the app tier (see ../README.md)
+#   cp .env.example .env && $EDITOR .env
+#   docker compose up -d
+name: pmapa-infra
+
+services:
+  # ─────────────────────────── auth (Postgres + Redis) ───────────────────────
+  auth-postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: auth
+      POSTGRES_PASSWORD: ${AUTH_POSTGRES_PASSWORD:?set AUTH_POSTGRES_PASSWORD}
+      POSTGRES_DB: auth
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+    volumes:
+      - auth-pgdata:/var/lib/postgresql/data
+    networks: [auth-data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U auth -d auth"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+  auth-redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${AUTH_REDIS_PASSWORD:?set AUTH_REDIS_PASSWORD}
+    command: ["redis-server", "--requirepass", "${AUTH_REDIS_PASSWORD}", "--appendonly", "yes"]
+    volumes:
+      - auth-redisdata:/data
+    networks: [auth-data]
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a $${REDIS_PASSWORD} ping | grep -q PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+  # ─────────────────────────────── user (Postgres) ───────────────────────────
+  user-postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: ${USER_POSTGRES_PASSWORD:?set USER_POSTGRES_PASSWORD}
+      POSTGRES_DB: user
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+    volumes:
+      - user-pgdata:/var/lib/postgresql/data
+    networks: [user-data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d user"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+  # ────────────────────────────── travel (Postgres) ──────────────────────────
+  travel-postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: travel
+      POSTGRES_PASSWORD: ${TRAVEL_POSTGRES_PASSWORD:?set TRAVEL_POSTGRES_PASSWORD}
+      POSTGRES_DB: travel
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+    volumes:
+      - travel-pgdata:/var/lib/postgresql/data
+    networks: [travel-data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U travel -d travel"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+  # ─────────────────────────────── post (Postgres) ───────────────────────────
+  post-postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: post
+      POSTGRES_PASSWORD: ${POST_POSTGRES_PASSWORD:?set POST_POSTGRES_PASSWORD}
+      POSTGRES_DB: post
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+    volumes:
+      - post-pgdata:/var/lib/postgresql/data
+    networks: [post-data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U post -d post"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+  # ────────────────────────────── store (Postgres) ───────────────────────────
+  store-postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: store
+      POSTGRES_PASSWORD: ${STORE_POSTGRES_PASSWORD:?set STORE_POSTGRES_PASSWORD}
+      POSTGRES_DB: store
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+    volumes:
+      - store-pgdata:/var/lib/postgresql/data
+    networks: [store-data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U store -d store"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+  # ───────────────────────────── message (Postgres) ──────────────────────────
+  message-postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: message
+      POSTGRES_PASSWORD: ${MESSAGE_POSTGRES_PASSWORD:?set MESSAGE_POSTGRES_PASSWORD}
+      POSTGRES_DB: message
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+    volumes:
+      - message-pgdata:/var/lib/postgresql/data
+    networks: [message-data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U message -d message"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+  # ──────────────────────── media (Postgres + MinIO/S3) ──────────────────────
+  media-postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: media
+      POSTGRES_PASSWORD: ${MEDIA_POSTGRES_PASSWORD:?set MEDIA_POSTGRES_PASSWORD}
+      POSTGRES_DB: media
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+    volumes:
+      - media-pgdata:/var/lib/postgresql/data
+    networks: [media-data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U media -d media"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+  minio:
+    image: quay.io/minio/minio
+    restart: unless-stopped
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?set MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio-data:/data
+    networks: [media-data]
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+  # One-shot: create the media bucket, then exit.
+  minio-init:
+    image: quay.io/minio/mc
+    depends_on:
+      minio:
+        condition: service_healthy
+    networks: [media-data]
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD} &&
+      mc mb --ignore-existing local/${MEDIA_S3_BUCKET:-pmapa-media}
+      "
+
+  # ────────────────────────── notification (Postgres) ────────────────────────
+  notification-postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: notification
+      POSTGRES_PASSWORD: ${NOTIFICATION_POSTGRES_PASSWORD:?set NOTIFICATION_POSTGRES_PASSWORD}
+      POSTGRES_DB: notification
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+    volumes:
+      - notification-pgdata:/var/lib/postgresql/data
+    networks: [notification-data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U notification -d notification"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+  # ─────────────────────────────── stats (Redis) ─────────────────────────────
+  stats-redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${STATS_REDIS_PASSWORD:?set STATS_REDIS_PASSWORD}
+    command: ["redis-server", "--requirepass", "${STATS_REDIS_PASSWORD}", "--appendonly", "yes"]
+    volumes:
+      - stats-redisdata:/data
+    networks: [stats-data]
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a $${REDIS_PASSWORD} ping | grep -q PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+# One isolated, internal network per data tier. The app service joins the same
+# network (as `external`) to reach its store — nothing else can. `internal: true`
+# means the stores have no route off-box.
+networks:
+  auth-data:
+    name: auth-data
+    internal: true
+  user-data:
+    name: user-data
+    internal: true
+  travel-data:
+    name: travel-data
+    internal: true
+  post-data:
+    name: post-data
+    internal: true
+  store-data:
+    name: store-data
+    internal: true
+  message-data:
+    name: message-data
+    internal: true
+  media-data:
+    name: media-data
+    internal: true
+  notification-data:
+    name: notification-data
+    internal: true
+  stats-data:
+    name: stats-data
+    internal: true
+
+volumes:
+  auth-pgdata:
+  auth-redisdata:
+  user-pgdata:
+  travel-pgdata:
+  post-pgdata:
+  store-pgdata:
+  message-pgdata:
+  media-pgdata:
+  notification-pgdata:
+  stats-redisdata:
+  minio-data:

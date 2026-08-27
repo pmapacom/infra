@@ -7,6 +7,7 @@ services:
   media:
     image: ghcr.io/pmapa/media:latest
     restart: unless-stopped
+    networks: [pmapa, media-data]   # media-data also carries MinIO
     environment:
       # ── fill by hand in .env ──
       DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL to the managed Postgres}
@@ -20,10 +21,12 @@ services:
       # ── baked defaults (edit here to change) ──
       MEDIA_HTTP_ADDR: ":8080"
       MEDIA_S3_PREFIX: "media/"
-      # true for MinIO/most providers; false for AWS virtual-hosted buckets.
-      MEDIA_S3_PATH_STYLE: "false"
+      # true for MinIO (the on-box store) / most providers; set false for AWS
+      # virtual-hosted buckets when you move off MinIO.
+      MEDIA_S3_PATH_STYLE: "true"
 
 networks:
-  default:
-    name: pmapa
+  pmapa:
+    external: true
+  media-data:
     external: true

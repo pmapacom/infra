@@ -1,7 +1,7 @@
 # env/prod/stats — cloud app tier for the stats service
 
 The **stateless** stats service (generic named-metric store), deployed from a
-pre-built image. Mirror of the data tier in [env/db/stats](../../db/stats).
+pre-built image. Mirror of the data tier in [env/prod/infra](../infra).
 INTERNAL-only: no gateway route, no published port — reachable only inside the
 cluster. Scale: `docker compose up -d --scale stats=3`.
 
@@ -22,8 +22,8 @@ _No other configuration — `STATS_HTTP_ADDR` defaults to `:8080`._
 
 ## Requirements
 
-- Managed **Redis** (via `REDIS_URL`) — see [env/db/stats](../../db/stats).
-- The shared external `pmapa` network.
+- **Redis** (via `REDIS_URL`) — see [env/prod/infra](../infra).
+- Networks: `pmapa` (service RPC) + `stats-data` (its store) — see [env/prod/infra](../infra).
 
 ## Deploy
 

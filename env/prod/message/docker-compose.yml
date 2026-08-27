@@ -6,6 +6,7 @@ services:
   message:
     image: ghcr.io/pmapa/message:latest
     restart: unless-stopped
+    networks: [pmapa, message-data]
     environment:
       # ── fill by hand in .env ──
       DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL to the managed Postgres}
@@ -16,6 +17,7 @@ services:
       MESSAGE_STATS_URL: "http://stats:8080"
 
 networks:
-  default:
-    name: pmapa
+  pmapa:
+    external: true
+  message-data:
     external: true

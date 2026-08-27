@@ -2,7 +2,7 @@
 
 The **stateless** media service (image uploads → S3, public `/media/{id}`),
 deployed from a pre-built image. Mirror of the data tier in
-[env/db/media](../../db/media). No published port — the public bytes are served
+[env/prod/infra](../infra). No published port — the public bytes are served
 via the [gateway](../gateway). Scale: `docker compose up -d --scale media=3`.
 
 Full env-var reference: <https://github.com/pmapacom/media>.
@@ -30,13 +30,13 @@ fails if unset.
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `MEDIA_S3_PREFIX` | `media/` | Key prefix within the bucket. |
-| `MEDIA_S3_PATH_STYLE` | `false` | `true` for MinIO/most providers; `false` for AWS virtual-hosted buckets. |
+| `MEDIA_S3_PATH_STYLE` | `true` | `true` for the on-box MinIO / most providers; set `false` for AWS virtual-hosted buckets. |
 
 ## Requirements
 
-- Managed **PostgreSQL** (via `DATABASE_URL`) — see [env/db/media](../../db/media).
+- **PostgreSQL** (via `DATABASE_URL`) — see [env/prod/infra](../infra).
 - **S3-compatible object storage** (via `MEDIA_S3_*`) — optional; Postgres-blob fallback when unset.
-- The shared external `pmapa` network.
+- Networks: `pmapa` (service RPC) + `media-data` (its store) — see [env/prod/infra](../infra).
 
 ## Deploy
 

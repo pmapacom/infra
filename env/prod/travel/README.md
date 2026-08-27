@@ -2,7 +2,7 @@
 
 The **stateless** travel service (trips as own-your-data documents, visited
 records), deployed from a pre-built image. Mirror of the data tier in
-[env/db/travel](../../db/travel). No published port — reachable only through the
+[env/prod/infra](../infra). No published port — reachable only through the
 [gateway](../gateway). Scale: `docker compose up -d --scale travel=3`.
 
 Full env-var reference: <https://github.com/pmapacom/travel>.
@@ -26,8 +26,8 @@ fails if unset.
 
 ## Requirements
 
-- Managed **PostgreSQL** (via `DATABASE_URL`) — see [env/db/travel](../../db/travel).
-- The shared external `pmapa` network.
+- **PostgreSQL** (via `DATABASE_URL`) — see [env/prod/infra](../infra).
+- Networks: `pmapa` (service RPC) + `travel-data` (its store) — see [env/prod/infra](../infra).
 
 ## Deploy
 

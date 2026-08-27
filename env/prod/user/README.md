@@ -2,7 +2,7 @@
 
 The **stateless** user service (profiles, follow graph, discovery, moderation),
 deployed from a pre-built image. Mirror of the data tier in
-[env/db/user](../../db/user). No published port — reachable only through the
+[env/prod/infra](../infra). No published port — reachable only through the
 [gateway](../gateway). Scale: `docker compose up -d --scale user=3`.
 
 Full env-var reference: <https://github.com/pmapacom/user>.
@@ -33,8 +33,8 @@ fails if unset.
 
 ## Requirements
 
-- Managed **PostgreSQL** (via `DATABASE_URL`) — see [env/db/user](../../db/user).
-- The shared external `pmapa` network.
+- **PostgreSQL** (via `DATABASE_URL`) — see [env/prod/infra](../infra).
+- Networks: `pmapa` (service RPC) + `user-data` (its store) — see [env/prod/infra](../infra).
 
 ## Deploy
 

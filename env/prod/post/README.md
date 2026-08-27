@@ -2,7 +2,7 @@
 
 The **stateless** post service (posts, likes/saves/comments, reviews, feed),
 deployed from a pre-built image. Mirror of the data tier in
-[env/db/post](../../db/post). No published port — reachable only through the
+[env/prod/infra](../infra). No published port — reachable only through the
 [gateway](../gateway). Scale: `docker compose up -d --scale post=3`.
 
 Full env-var reference: <https://github.com/pmapacom/post>.
@@ -28,9 +28,9 @@ fails if unset.
 
 ## Requirements
 
-- Managed **PostgreSQL** (via `DATABASE_URL`) — see [env/db/post](../../db/post).
+- **PostgreSQL** (via `DATABASE_URL`) — see [env/prod/infra](../infra).
 - In-cluster **user** service (feed); **stats** / **notification** optional.
-- The shared external `pmapa` network.
+- Networks: `pmapa` (service RPC) + `post-data` (its store) — see [env/prod/infra](../infra).
 
 ## Deploy
 

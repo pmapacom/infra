@@ -6,6 +6,7 @@ services:
   post:
     image: ghcr.io/pmapa/post:latest
     restart: unless-stopped
+    networks: [pmapa, post-data]
     environment:
       # ── fill by hand in .env ──
       DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL to the managed Postgres}
@@ -16,6 +17,7 @@ services:
       POST_NOTIFICATION_URL: "http://notification:8080"
 
 networks:
-  default:
-    name: pmapa
+  pmapa:
+    external: true
+  post-data:
     external: true
