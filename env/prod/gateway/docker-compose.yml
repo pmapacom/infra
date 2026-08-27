@@ -4,9 +4,9 @@
 # routes by proto domain to the back-ends over the shared pmapa network.
 #
 # Mounts the same nginx config used everywhere else (env/gateway/*), so the
-# request path is identical to local + the test contour.
+# request path is identical to local + the test contour. No .env — nothing here
+# is a secret; to change the public port, edit the ports mapping below.
 #
-#   cp .env.example .env
 #   docker compose up -d
 name: pmapa-gateway
 
@@ -18,8 +18,8 @@ services:
       - ../../gateway/nginx.conf:/etc/nginx/nginx.conf:ro
       - ../../gateway/snippets:/etc/nginx/gateway/snippets:ro
     ports:
-      # Public HTTP port (behind your TLS edge). Container listens on :8080.
-      - "${GATEWAY_PORT:-80}:8080"
+      # Public HTTP port (behind your TLS edge) : container listens on :8080.
+      - "80:8080"
 
 networks:
   default:

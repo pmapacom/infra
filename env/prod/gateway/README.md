@@ -9,16 +9,15 @@ the same nginx config used locally and in the test contour
 TLS is **not** handled here — terminate it at an outer edge (LB / Cloudflare) in
 front of this. The container speaks plain HTTP on the published port.
 
-## Environment
+## Configuration
 
-Copy `.env.example` → `.env` (optional — a default is provided).
+No `.env` — nothing here is a secret. Everything is baked into
+`docker-compose.yml`:
 
-| Variable | Default | Purpose |
-|----------|---------|---------|
-| `GATEWAY_PORT` | `80` | Public HTTP port your TLS edge forwards to (container listens on `:8080`). |
-
-The nginx config itself is mounted read-only from `../../gateway/` — edit it
-there, not here.
+- **Public port** — `80:8080` (container listens on `:8080`). Edit the `ports`
+  mapping in the compose to publish a different port to your TLS edge.
+- **nginx config** — mounted read-only from `../../gateway/`; edit it there, not
+  here.
 
 ## Requirements
 
@@ -30,6 +29,5 @@ there, not here.
 
 ```bash
 docker network create pmapa            # once per host
-cp .env.example .env
 docker compose up -d
 ```

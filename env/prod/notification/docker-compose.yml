@@ -1,22 +1,24 @@
 # Cloud app tier for the notification service — stateless, scale to N replicas.
-# Owns email templates + SMTP delivery and the in-app activity feed (Postgres).
-# INTERNAL-ONLY s2s for Notify/SendEmail; its read/prefs RPCs are gateway-routed.
+# Defaults baked in below; fill the DB + SMTP details in .env. No published port.
+# Uses NOTIFICATION_DATABASE_URL (not the shared DATABASE_URL).
 name: pmapa-notification
 
 services:
   notification:
-    image: ${IMAGE:-ghcr.io/pmapa/notification:latest}
+    image: ghcr.io/pmapa/notification:latest
     restart: unless-stopped
     environment:
+      # ── fill by hand in .env ──
       NOTIFICATION_DATABASE_URL: ${NOTIFICATION_DATABASE_URL:?set the managed Postgres URL}
+      # SMTP relay. Leave NOTIFICATION_SMTP_HOST empty to log emails instead of sending.
+      NOTIFICATION_SMTP_HOST: ${NOTIFICATION_SMTP_HOST?set the SMTP host (empty to log)}
+      NOTIFICATION_SMTP_USERNAME: ${NOTIFICATION_SMTP_USERNAME-}
+      NOTIFICATION_SMTP_PASSWORD: ${NOTIFICATION_SMTP_PASSWORD-}
+      NOTIFICATION_RESET_URL_BASE: ${NOTIFICATION_RESET_URL_BASE-}
+      # ── baked defaults (edit here to change) ──
       NOTIFICATION_HTTP_ADDR: ":8080"
-      # Real SMTP relay (Postmark/SES/Mailgun/…). Empty host = log instead of send.
-      NOTIFICATION_SMTP_HOST: ${NOTIFICATION_SMTP_HOST:?set the SMTP host or empty to log}
-      NOTIFICATION_SMTP_PORT: ${NOTIFICATION_SMTP_PORT:-587}
-      NOTIFICATION_SMTP_USERNAME: ${NOTIFICATION_SMTP_USERNAME:-}
-      NOTIFICATION_SMTP_PASSWORD: ${NOTIFICATION_SMTP_PASSWORD:-}
-      NOTIFICATION_SMTP_FROM: ${NOTIFICATION_SMTP_FROM:-PMapa <no-reply@pmapa.app>}
-      NOTIFICATION_RESET_URL_BASE: ${NOTIFICATION_RESET_URL_BASE:-}
+      NOTIFICATION_SMTP_PORT: "587"
+      NOTIFICATION_SMTP_FROM: "PMapa <no-reply@pmapa.app>"
 
 networks:
   default:

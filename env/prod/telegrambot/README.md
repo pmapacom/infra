@@ -16,11 +16,10 @@ fails (`os.Exit(1)`) if unset.
 
 | Variable | Purpose |
 |----------|---------|
-| `IMAGE` | Registry image + tag, e.g. `ghcr.io/pmapa/telegrambot:latest`. |
 | `TELEGRAM_BOT_TOKEN` | Telegram bot token. |
 | `TELEGRAM_CHAT_ID` | Target chat id for alerts + reports. |
 
-### Defaulted (override only if needed)
+### Baked into docker-compose.yml (edit the file to change)
 
 | Variable | Default | Purpose |
 |----------|---------|---------|

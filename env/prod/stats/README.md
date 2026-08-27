@@ -16,7 +16,6 @@ fails if unset.
 
 | Variable | Purpose |
 |----------|---------|
-| `IMAGE` | Registry image + tag, e.g. `ghcr.io/pmapa/stats:latest`. |
 | `REDIS_URL` | Managed Redis URL (the metric store). |
 
 _No other configuration — `STATS_HTTP_ADDR` defaults to `:8080`._

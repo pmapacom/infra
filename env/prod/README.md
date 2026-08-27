@@ -51,14 +51,14 @@ docker network create pmapa          # or: docker network create -d overlay --at
 docker network create pmapa
 docker login ghcr.io
 
-# 2. per service: point IMAGE at your registry tag, fill the data-tier URLs/secrets
+# 2. per service: fill only the secrets/URLs in .env (the rest is baked in)
 cd env/prod/auth
 cp .env.example .env && $EDITOR .env
 docker compose pull && docker compose up -d
 
 # repeat for user, travel, post, store, message, media, notification, stats
-# then bring up the front door last:
-cd ../gateway && cp .env.example .env && docker compose up -d
+# then bring up the front door last (no .env needed):
+cd ../gateway && docker compose up -d
 ```
 
 Scale a stateless service horizontally (the gateway load-balances via Docker DNS):
@@ -69,8 +69,13 @@ cd env/prod/auth && docker compose up -d --scale auth=3
 
 ## Notes
 
-- **Images.** Each `.env` sets `IMAGE=<registry>/<svc>:<tag>`. Build + push them
-  from the repo root, e.g. `docker build -f auth/Dockerfile -t ghcr.io/pmapa/auth:latest . && docker push ghcr.io/pmapa/auth:latest`.
+- **Images.** The image + tag is baked into each `docker-compose.yml`
+  (`image: ghcr.io/pmapa/<svc>:latest`) — edit that line to pin a tag. Build +
+  push from the repo root, e.g. `docker build -f auth/Dockerfile -t ghcr.io/pmapa/auth:latest . && docker push ghcr.io/pmapa/auth:latest`.
+- **What goes in `.env`.** Only values with no sensible default — secrets,
+  `DATABASE_URL`/`REDIS_URL`, S3 + SMTP config. Everything else (listen addr,
+  TTLs, in-cluster service URLs, ports, intervals) is baked into the compose;
+  change it by editing the file, not the environment.
 - **Data tier.** `DATABASE_URL` / `REDIS_URL` must point at **managed** Postgres/
   Redis (use `sslmode=require`). Do not run `env/db/*` per app replica — those are
   a single data host, one per logical database.

@@ -16,16 +16,20 @@ fails if unset.
 
 | Variable | Purpose |
 |----------|---------|
-| `IMAGE` | Registry image + tag, e.g. `ghcr.io/pmapa/user:latest`. |
 | `DATABASE_URL` | Managed Postgres URL (use `sslmode=require`). |
 
-### Defaulted (override only if needed)
+### Optional (in .env)
+
+| Variable | Purpose |
+|----------|---------|
+| `USER_ADMIN_IDS` | Comma-separated moderator user ids (unlocks the Moderation queue); unset ⇒ no admins. |
+
+### Baked into docker-compose.yml (edit the file to change)
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `USER_STATS_URL` | `http://stats:8080` | Metric pushes; empty ⇒ metrics disabled. |
 | `USER_NOTIFICATION_URL` | `http://notification:8080` | In-app follow events; empty ⇒ disabled. |
-| `USER_ADMIN_IDS` | (empty) | Comma-separated moderator user ids (unlocks the Moderation queue). |
 
 ## Requirements
 

@@ -16,20 +16,19 @@ fails if unset.
 
 | Variable | Purpose |
 |----------|---------|
-| `IMAGE` | Registry image + tag, e.g. `ghcr.io/pmapa/media:latest`. |
 | `DATABASE_URL` | Managed Postgres URL (metadata + optional blob fallback; `sslmode=require`). |
 | `MEDIA_S3_ENDPOINT` | S3-compatible endpoint. Set empty (`MEDIA_S3_ENDPOINT=`) to store bytes as Postgres blobs instead. |
 | `MEDIA_S3_BUCKET` | Bucket name. |
 | `MEDIA_S3_ACCESS_KEY` / `MEDIA_S3_SECRET_KEY` | S3 credentials. |
+| `MEDIA_S3_REGION` | S3 region (provider-specific; falls back to `us-east-1` if unset). |
 
 > S3 is used only when endpoint + bucket + access + secret are **all** set;
 > otherwise the service falls back to storing image bytes in Postgres.
 
-### Defaulted (override only if needed)
+### Baked into docker-compose.yml (edit the file to change)
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `MEDIA_S3_REGION` | `us-east-1` | S3 region. |
 | `MEDIA_S3_PREFIX` | `media/` | Key prefix within the bucket. |
 | `MEDIA_S3_PATH_STYLE` | `false` | `true` for MinIO/most providers; `false` for AWS virtual-hosted buckets. |
 

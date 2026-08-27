@@ -17,19 +17,23 @@ Vars marked **must set** are `${VAR:?}` in the compose — boot fails if unset.
 
 | Variable | Purpose |
 |----------|---------|
-| `IMAGE` | Registry image + tag, e.g. `ghcr.io/pmapa/auth:latest`. |
 | `DATABASE_URL` | Managed Postgres URL (use `sslmode=require`). |
 | `REDIS_URL` | Managed Redis URL (session deny-list + DPoP replay guard). |
 | `AUTH_SIGNING_KEY_SEED` | Base64 32-byte Ed25519 seed shared across replicas — `openssl rand -base64 32`. Empty ⇒ ephemeral per-process key (dev only). |
 
-### Defaulted (override only if needed)
+### Optional (in .env)
+
+| Variable | Purpose |
+|----------|---------|
+| `AUTH_OIDC_GOOGLE_CLIENT_IDS` / `AUTH_OIDC_APPLE_CLIENT_IDS` | Accepted OIDC client ids (comma-separated); unset ⇒ that social login disabled. |
+
+### Baked into docker-compose.yml (edit the file to change)
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `AUTH_ACCESS_TTL` | `10m` | Access-token lifetime. |
 | `AUTH_NOTIFICATION_URL` | `http://notification:8080` | Password-reset email delivery. |
 | `AUTH_USER_URL` / `AUTH_POST_URL` / `AUTH_TRAVEL_URL` / `AUTH_MESSAGE_URL` / `AUTH_MEDIA_URL` | `http://<svc>:8080` | Account-deletion `PurgeUser` fan-out targets. |
-| `AUTH_OIDC_GOOGLE_CLIENT_IDS` / `AUTH_OIDC_APPLE_CLIENT_IDS` | (empty) | Accepted OIDC client ids; empty ⇒ that social login disabled. |
 
 ## Requirements
 

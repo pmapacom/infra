@@ -1,25 +1,27 @@
 # Cloud app tier for the media service — stateless, scale to N replicas.
-# State lives in managed Postgres (metadata) + an S3-compatible bucket (bytes).
-# No published port — the public /media/{id} bytes are served via the gateway.
+# Defaults baked in below; fill the DB + S3 connection details in .env.
+# No published port — public /media/{id} bytes are served via the gateway.
 name: pmapa-media
 
 services:
   media:
-    image: ${IMAGE:-ghcr.io/pmapa/media:latest}
+    image: ghcr.io/pmapa/media:latest
     restart: unless-stopped
     environment:
+      # ── fill by hand in .env ──
       DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL to the managed Postgres}
+      # S3-compatible storage. Leave MEDIA_S3_ENDPOINT empty to store bytes as
+      # Postgres blobs instead (then the other S3_* values are ignored).
+      MEDIA_S3_ENDPOINT: ${MEDIA_S3_ENDPOINT?set MEDIA_S3_ENDPOINT (empty for Postgres blobs)}
+      MEDIA_S3_REGION: ${MEDIA_S3_REGION-us-east-1}
+      MEDIA_S3_BUCKET: ${MEDIA_S3_BUCKET-}
+      MEDIA_S3_ACCESS_KEY: ${MEDIA_S3_ACCESS_KEY-}
+      MEDIA_S3_SECRET_KEY: ${MEDIA_S3_SECRET_KEY-}
+      # ── baked defaults (edit here to change) ──
       MEDIA_HTTP_ADDR: ":8080"
-      # S3-compatible object storage (AWS S3, R2, MinIO, …). Set
-      # MEDIA_S3_ENDPOINT= (empty) to fall back to Postgres blobs.
-      MEDIA_S3_ENDPOINT: ${MEDIA_S3_ENDPOINT:?set MEDIA_S3_ENDPOINT or empty for blobs}
-      MEDIA_S3_REGION: ${MEDIA_S3_REGION:-us-east-1}
-      MEDIA_S3_BUCKET: ${MEDIA_S3_BUCKET:?set the media bucket}
-      MEDIA_S3_ACCESS_KEY: ${MEDIA_S3_ACCESS_KEY:?set the S3 access key}
-      MEDIA_S3_SECRET_KEY: ${MEDIA_S3_SECRET_KEY:?set the S3 secret key}
-      MEDIA_S3_PREFIX: ${MEDIA_S3_PREFIX:-media/}
-      # false for AWS virtual-hosted buckets; true for MinIO / most others.
-      MEDIA_S3_PATH_STYLE: ${MEDIA_S3_PATH_STYLE:-false}
+      MEDIA_S3_PREFIX: "media/"
+      # true for MinIO/most providers; false for AWS virtual-hosted buckets.
+      MEDIA_S3_PATH_STYLE: "false"
 
 networks:
   default:

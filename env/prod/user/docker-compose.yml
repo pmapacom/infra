@@ -1,21 +1,23 @@
 # Cloud app tier for the user service — stateless, scale to N replicas.
-# State lives in managed Postgres (DATABASE_URL). No published port — via gateway.
+# Defaults baked in below; fill only DATABASE_URL in .env. No published port.
 #
 #   cp .env.example .env && $EDITOR .env
-#   docker compose pull && docker compose up -d
+#   docker compose up -d
 name: pmapa-user
 
 services:
   user:
-    image: ${IMAGE:-ghcr.io/pmapa/user:latest}
+    image: ghcr.io/pmapa/user:latest
     restart: unless-stopped
     environment:
+      # ── fill by hand in .env ──
       DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL to the managed Postgres}
+      # Optional — comma-separated moderator user ids (unlocks the Moderation queue).
+      USER_ADMIN_IDS: ${USER_ADMIN_IDS-}
+      # ── baked defaults (edit here to change) ──
       USER_HTTP_ADDR: ":8080"
-      USER_STATS_URL: ${USER_STATS_URL-http://stats:8080}
-      USER_NOTIFICATION_URL: ${USER_NOTIFICATION_URL-http://notification:8080}
-      # Comma-separated moderator user ids (empty = no admins).
-      USER_ADMIN_IDS: ${USER_ADMIN_IDS:-}
+      USER_STATS_URL: "http://stats:8080"
+      USER_NOTIFICATION_URL: "http://notification:8080"
 
 networks:
   default:

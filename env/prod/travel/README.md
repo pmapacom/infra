@@ -16,10 +16,9 @@ fails if unset.
 
 | Variable | Purpose |
 |----------|---------|
-| `IMAGE` | Registry image + tag, e.g. `ghcr.io/pmapa/travel:latest`. |
 | `DATABASE_URL` | Managed Postgres URL (use `sslmode=require`). |
 
-### Defaulted (override only if needed)
+### Baked into docker-compose.yml (edit the file to change)
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
