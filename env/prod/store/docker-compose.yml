@@ -4,7 +4,7 @@ name: pmapa-store
 
 services:
   store:
-    image: ghcr.io/pmapa/store:latest
+    image: ghcr.io/pmapacom/store:latest
     restart: unless-stopped
     networks: [pmapa, store-data]
     environment:

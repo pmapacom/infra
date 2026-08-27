@@ -5,7 +5,7 @@ name: pmapa-notification
 
 services:
   notification:
-    image: ghcr.io/pmapa/notification:latest
+    image: ghcr.io/pmapacom/notification:latest
     restart: unless-stopped
     networks: [pmapa, notification-data]
     environment:

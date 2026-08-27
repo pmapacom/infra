@@ -7,7 +7,7 @@ name: pmapa-user
 
 services:
   user:
-    image: ghcr.io/pmapa/user:latest
+    image: ghcr.io/pmapacom/user:latest
     restart: unless-stopped
     networks: [pmapa, user-data]
     environment:

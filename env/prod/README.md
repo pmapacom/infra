@@ -79,8 +79,8 @@ cd env/prod/auth && docker compose up -d --scale auth=3
 ## Notes
 
 - **Images.** The image + tag is baked into each `docker-compose.yml`
-  (`image: ghcr.io/pmapa/<svc>:latest`) — edit that line to pin a tag. Build +
-  push from the repo root, e.g. `docker build -f auth/Dockerfile -t ghcr.io/pmapa/auth:latest . && docker push ghcr.io/pmapa/auth:latest`.
+  (`image: ghcr.io/pmapacom/<svc>:latest`) — edit that line to pin a tag. Build +
+  push from the repo root, e.g. `docker build -f auth/Dockerfile -t ghcr.io/pmapacom/auth:latest . && docker push ghcr.io/pmapacom/auth:latest`.
 - **What goes in `.env`.** Only secrets — data-tier **passwords**, the signing
   seed, SMTP creds. Even the connection strings are baked: each compose assembles
   `postgres://<user>:${<SVC>_POSTGRES_PASSWORD}@<host>/<db>` from baked host/db +

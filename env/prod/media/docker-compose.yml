@@ -5,7 +5,7 @@ name: pmapa-media
 
 services:
   media:
-    image: ghcr.io/pmapa/media:latest
+    image: ghcr.io/pmapacom/media:latest
     restart: unless-stopped
     networks: [pmapa, media-data]   # media-data also carries MinIO
     environment:

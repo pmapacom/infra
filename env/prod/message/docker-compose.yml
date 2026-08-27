@@ -4,7 +4,7 @@ name: pmapa-message
 
 services:
   message:
-    image: ghcr.io/pmapa/message:latest
+    image: ghcr.io/pmapacom/message:latest
     restart: unless-stopped
     networks: [pmapa, message-data]
     environment:

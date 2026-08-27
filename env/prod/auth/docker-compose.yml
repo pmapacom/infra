@@ -11,7 +11,7 @@ name: pmapa-auth
 
 services:
   auth:
-    image: ghcr.io/pmapa/auth:latest
+    image: ghcr.io/pmapacom/auth:latest
     restart: unless-stopped
     networks: [pmapa, auth-data]   # pmapa: reach other services · auth-data: reach auth-postgres/redis
     environment:

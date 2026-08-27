@@ -4,7 +4,7 @@ name: pmapa-post
 
 services:
   post:
-    image: ghcr.io/pmapa/post:latest
+    image: ghcr.io/pmapacom/post:latest
     restart: unless-stopped
     networks: [pmapa, post-data]
     environment:

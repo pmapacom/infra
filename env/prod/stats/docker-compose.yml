@@ -4,7 +4,7 @@ name: pmapa-stats
 
 services:
   stats:
-    image: ghcr.io/pmapa/stats:latest
+    image: ghcr.io/pmapacom/stats:latest
     restart: unless-stopped
     networks: [pmapa, stats-data]
     environment:

@@ -4,7 +4,7 @@ name: pmapa-travel
 
 services:
   travel:
-    image: ghcr.io/pmapa/travel:latest
+    image: ghcr.io/pmapacom/travel:latest
     restart: unless-stopped
     networks: [pmapa, travel-data]
     environment:

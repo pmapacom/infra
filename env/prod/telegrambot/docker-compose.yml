@@ -5,7 +5,7 @@ name: pmapa-telegrambot
 
 services:
   telegrambot:
-    image: ghcr.io/pmapa/telegrambot:latest
+    image: ghcr.io/pmapacom/telegrambot:latest
     restart: unless-stopped
     environment:
       # ── fill by hand in .env ──
