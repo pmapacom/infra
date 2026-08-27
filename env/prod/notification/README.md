@@ -20,7 +20,7 @@ fails if unset.
 
 | Variable | Purpose |
 |----------|---------|
-| `NOTIFICATION_DATABASE_URL` | Managed Postgres URL (activity feed + push tokens/prefs; `sslmode=require`). |
+| `NOTIFICATION_POSTGRES_PASSWORD` | Postgres password — host/db/user are baked. Must equal `NOTIFICATION_POSTGRES_PASSWORD` in infra. |
 | `NOTIFICATION_SMTP_HOST` | SMTP relay host. Set empty (`NOTIFICATION_SMTP_HOST=`) to log emails instead of sending. |
 
 ### Optional (in .env)

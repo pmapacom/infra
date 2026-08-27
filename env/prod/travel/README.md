@@ -16,7 +16,7 @@ fails if unset.
 
 | Variable | Purpose |
 |----------|---------|
-| `DATABASE_URL` | Managed Postgres URL (use `sslmode=require`). |
+| `TRAVEL_POSTGRES_PASSWORD` | Postgres password — host/db/user are baked. Must equal `TRAVEL_POSTGRES_PASSWORD` in infra. |
 
 ### Baked into docker-compose.yml (edit the file to change)
 

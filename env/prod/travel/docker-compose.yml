@@ -9,7 +9,9 @@ services:
     networks: [pmapa, travel-data]
     environment:
       # ── fill by hand in .env ──
-      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL to the managed Postgres}
+      # Only the password is a secret; host/db/user are baked (known from
+      # env/prod/infra). Must equal TRAVEL_POSTGRES_PASSWORD in env/prod/infra/.env.
+      DATABASE_URL: postgres://travel:${TRAVEL_POSTGRES_PASSWORD:?set TRAVEL_POSTGRES_PASSWORD (match infra)}@travel-postgres:5432/travel?sslmode=disable
       # ── baked defaults (edit here to change) ──
       TRAVEL_HTTP_ADDR: ":8080"
       TRAVEL_STATS_URL: "http://stats:8080"

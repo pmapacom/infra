@@ -16,7 +16,7 @@ fails if unset.
 
 | Variable | Purpose |
 |----------|---------|
-| `REDIS_URL` | Managed Redis URL (the metric store). |
+| `STATS_REDIS_PASSWORD` | Redis password — host is baked. Must equal `STATS_REDIS_PASSWORD` in infra. |
 
 _No other configuration — `STATS_HTTP_ADDR` defaults to `:8080`._
 

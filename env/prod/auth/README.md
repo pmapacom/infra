@@ -17,8 +17,8 @@ Vars marked **must set** are `${VAR:?}` in the compose — boot fails if unset.
 
 | Variable | Purpose |
 |----------|---------|
-| `DATABASE_URL` | Managed Postgres URL (use `sslmode=require`). |
-| `REDIS_URL` | Managed Redis URL (session deny-list + DPoP replay guard). |
+| `AUTH_POSTGRES_PASSWORD` | Postgres password — host/db/user are baked. Must equal `AUTH_POSTGRES_PASSWORD` in infra. |
+| `AUTH_REDIS_PASSWORD` | Redis password (session deny-list + DPoP replay). Must equal infra's. |
 | `AUTH_SIGNING_KEY_SEED` | Base64 32-byte Ed25519 seed shared across replicas — `openssl rand -base64 32`. Empty ⇒ ephemeral per-process key (dev only). |
 
 ### Optional (in .env)

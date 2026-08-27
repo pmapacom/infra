@@ -9,7 +9,9 @@ services:
     networks: [pmapa, store-data]
     environment:
       # ── fill by hand in .env ──
-      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL to the managed Postgres}
+      # Only the password is a secret; host/db/user are baked (known from
+      # env/prod/infra). Must equal STORE_POSTGRES_PASSWORD in env/prod/infra/.env.
+      DATABASE_URL: postgres://store:${STORE_POSTGRES_PASSWORD:?set STORE_POSTGRES_PASSWORD (match infra)}@store-postgres:5432/store?sslmode=disable
       # ── baked defaults (edit here to change) ──
       STORE_HTTP_ADDR: ":8080"
       STORE_STATS_URL: "http://stats:8080"

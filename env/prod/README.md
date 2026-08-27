@@ -81,17 +81,19 @@ cd env/prod/auth && docker compose up -d --scale auth=3
 - **Images.** The image + tag is baked into each `docker-compose.yml`
   (`image: ghcr.io/pmapa/<svc>:latest`) — edit that line to pin a tag. Build +
   push from the repo root, e.g. `docker build -f auth/Dockerfile -t ghcr.io/pmapa/auth:latest . && docker push ghcr.io/pmapa/auth:latest`.
-- **What goes in `.env`.** Only values with no sensible default — secrets,
-  `DATABASE_URL`/`REDIS_URL`, S3 + SMTP config. Everything else (listen addr,
-  TTLs, in-cluster service URLs, ports, intervals) is baked into the compose;
-  change it by editing the file, not the environment.
-- **Data tier.** On one box it's [`infra/`](infra) — the `.env.example`
-  connection strings already point at those container names (`sslmode=disable`,
-  safe on-host). **Extracting a DB later:** stand up a managed instance, then in
-  that one service's `.env` swap the host and set `sslmode=require`, and drop its
-  store from `infra/`. The `<svc>-data` network boundary means nothing else moves.
-- **Passwords must match.** A service's `DATABASE_URL`/`REDIS_URL` password has to
-  equal the one `infra/.env` set for that store — keep the two in sync.
+- **What goes in `.env`.** Only secrets — data-tier **passwords**, the signing
+  seed, SMTP creds. Even the connection strings are baked: each compose assembles
+  `postgres://<user>:${<SVC>_POSTGRES_PASSWORD}@<host>/<db>` from baked host/db +
+  the one password you supply. Everything else (listen addr, TTLs, in-cluster
+  URLs, ports, intervals) is baked too — change it by editing the file.
+- **Data tier.** On one box it's [`infra/`](infra); each service composes its URL
+  from a baked container host + the password you set (`sslmode=disable`, safe
+  on-host). **Extracting a DB later:** stand up a managed instance, edit the host
+  + `sslmode` on that one service compose's URL line, update its password, and drop
+  the store from `infra/`. The `<svc>-data` network boundary means nothing else moves.
+- **Passwords must match — by name.** A service reads the **same variable name**
+  as `infra/.env` (e.g. `AUTH_POSTGRES_PASSWORD`), so keeping them in sync is just
+  putting the same value under the same name in both files.
 - **Secrets.** `AUTH_SIGNING_KEY_SEED`, DB passwords, SMTP + S3 creds come from
   `.env` (git-ignored) — inject them from your secret manager in a real cluster.
 - **TLS.** This gateway speaks plain HTTP; terminate TLS at an outer edge (LB /

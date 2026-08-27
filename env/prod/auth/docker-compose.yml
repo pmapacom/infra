@@ -16,8 +16,12 @@ services:
     networks: [pmapa, auth-data]   # pmapa: reach other services · auth-data: reach auth-postgres/redis
     environment:
       # ── fill these by hand in .env ──
-      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL to the managed Postgres}
-      REDIS_URL: ${REDIS_URL:?set REDIS_URL to the managed Redis}
+      # Only the passwords are secrets; host/db/user are baked (they're known from
+      # env/prod/infra). The password must equal AUTH_POSTGRES_PASSWORD /
+      # AUTH_REDIS_PASSWORD in env/prod/infra/.env. Extracting a DB later: edit the
+      # host + sslmode on these two lines.
+      DATABASE_URL: postgres://auth:${AUTH_POSTGRES_PASSWORD:?set AUTH_POSTGRES_PASSWORD (match infra)}@auth-postgres:5432/auth?sslmode=disable
+      REDIS_URL: redis://:${AUTH_REDIS_PASSWORD:?set AUTH_REDIS_PASSWORD (match infra)}@auth-redis:6379/0
       AUTH_SIGNING_KEY_SEED: ${AUTH_SIGNING_KEY_SEED:?set a base64 32-byte seed}
       # Optional — social login accepted OIDC client ids; unset ⇒ disabled.
       AUTH_OIDC_GOOGLE_CLIENT_IDS: ${AUTH_OIDC_GOOGLE_CLIENT_IDS-}

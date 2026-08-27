@@ -10,7 +10,9 @@ services:
     networks: [pmapa, notification-data]
     environment:
       # ── fill by hand in .env ──
-      NOTIFICATION_DATABASE_URL: ${NOTIFICATION_DATABASE_URL:?set the managed Postgres URL}
+      # Only the password is a secret; host/db/user are baked (known from
+      # env/prod/infra). Must equal NOTIFICATION_POSTGRES_PASSWORD in env/prod/infra/.env.
+      NOTIFICATION_DATABASE_URL: postgres://notification:${NOTIFICATION_POSTGRES_PASSWORD:?set NOTIFICATION_POSTGRES_PASSWORD (match infra)}@notification-postgres:5432/notification?sslmode=disable
       # SMTP relay. Leave NOTIFICATION_SMTP_HOST empty to log emails instead of sending.
       NOTIFICATION_SMTP_HOST: ${NOTIFICATION_SMTP_HOST?set the SMTP host (empty to log)}
       NOTIFICATION_SMTP_USERNAME: ${NOTIFICATION_SMTP_USERNAME-}
