@@ -13,7 +13,8 @@ services:
       # Only the passwords are secrets; host/db/user + the on-box MinIO endpoint
       # are baked (known from env/prod/infra). Passwords must equal
       # MEDIA_POSTGRES_PASSWORD / MINIO_ROOT_PASSWORD in env/prod/infra/.env.
-      DATABASE_URL: postgres://media:${MEDIA_POSTGRES_PASSWORD:?set MEDIA_POSTGRES_PASSWORD (match infra)}@media-postgres:5432/media?sslmode=disable
+      DATABASE_URL: postgres://media@media-postgres:5432/media?sslmode=disable
+      PGPASSWORD: ${MEDIA_POSTGRES_PASSWORD:?set MEDIA_POSTGRES_PASSWORD (match infra)}
       MEDIA_S3_ACCESS_KEY: ${MINIO_ROOT_USER:-pmapa}
       MEDIA_S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD (match infra)}
       # ── baked defaults (edit here to change) ──

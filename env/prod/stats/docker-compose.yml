@@ -11,7 +11,8 @@ services:
       # ── fill by hand in .env ──
       # Only the password is a secret; host is baked (known from env/prod/infra).
       # Must equal STATS_REDIS_PASSWORD in env/prod/infra/.env.
-      REDIS_URL: redis://:${STATS_REDIS_PASSWORD:?set STATS_REDIS_PASSWORD (match infra)}@stats-redis:6379/0
+      REDIS_URL: redis://stats-redis:6379/0
+      REDIS_PASSWORD: ${STATS_REDIS_PASSWORD:?set STATS_REDIS_PASSWORD (match infra)}
       # ── baked defaults (edit here to change) ──
       STATS_HTTP_ADDR: ":8080"
 

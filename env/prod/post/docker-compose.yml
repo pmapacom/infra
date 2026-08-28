@@ -11,7 +11,8 @@ services:
       # ── fill by hand in .env ──
       # Only the password is a secret; host/db/user are baked (known from
       # env/prod/infra). Must equal POST_POSTGRES_PASSWORD in env/prod/infra/.env.
-      DATABASE_URL: postgres://post:${POST_POSTGRES_PASSWORD:?set POST_POSTGRES_PASSWORD (match infra)}@post-postgres:5432/post?sslmode=disable
+      DATABASE_URL: postgres://post@post-postgres:5432/post?sslmode=disable
+      PGPASSWORD: ${POST_POSTGRES_PASSWORD:?set POST_POSTGRES_PASSWORD (match infra)}
       # ── baked defaults (edit here to change) ──
       POST_HTTP_ADDR: ":8080"
       POST_USER_URL: "http://user:8080"

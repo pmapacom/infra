@@ -82,10 +82,10 @@ cd env/prod/auth && docker compose up -d --scale auth=3
   (`image: ghcr.io/pmapacom/<svc>:latest`) — edit that line to pin a tag. Build +
   push from the repo root, e.g. `docker build -f auth/Dockerfile -t ghcr.io/pmapacom/auth:latest . && docker push ghcr.io/pmapacom/auth:latest`.
 - **What goes in `.env`.** Only secrets — data-tier **passwords**, the signing
-  seed, SMTP creds. Even the connection strings are baked: each compose assembles
-  `postgres://<user>:${<SVC>_POSTGRES_PASSWORD}@<host>/<db>` from baked host/db +
-  the one password you supply. Everything else (listen addr, TTLs, in-cluster
-  URLs, ports, intervals) is baked too — change it by editing the file.
+  seed, SMTP creds. Connection strings are baked (password-free); the password is
+  handed to the service out-of-band via `PGPASSWORD` / `REDIS_PASSWORD`, so it may
+  contain any characters. Everything else (listen addr, TTLs, in-cluster URLs,
+  ports, intervals) is baked too — change it by editing the file.
 - **Data tier.** On one box it's [`infra/`](infra); each service composes its URL
   from a baked container host + the password you set (`sslmode=disable`, safe
   on-host). **Extracting a DB later:** stand up a managed instance, edit the host

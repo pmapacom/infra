@@ -11,7 +11,8 @@ services:
       # ── fill by hand in .env ──
       # Only the password is a secret; host/db/user are baked (known from
       # env/prod/infra). Must equal MESSAGE_POSTGRES_PASSWORD in env/prod/infra/.env.
-      DATABASE_URL: postgres://message:${MESSAGE_POSTGRES_PASSWORD:?set MESSAGE_POSTGRES_PASSWORD (match infra)}@message-postgres:5432/message?sslmode=disable
+      DATABASE_URL: postgres://message@message-postgres:5432/message?sslmode=disable
+      PGPASSWORD: ${MESSAGE_POSTGRES_PASSWORD:?set MESSAGE_POSTGRES_PASSWORD (match infra)}
       # ── baked defaults (edit here to change) ──
       MESSAGE_HTTP_ADDR: ":8080"
       MESSAGE_USER_URL: "http://user:8080"

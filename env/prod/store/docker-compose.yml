@@ -11,7 +11,8 @@ services:
       # ── fill by hand in .env ──
       # Only the password is a secret; host/db/user are baked (known from
       # env/prod/infra). Must equal STORE_POSTGRES_PASSWORD in env/prod/infra/.env.
-      DATABASE_URL: postgres://store:${STORE_POSTGRES_PASSWORD:?set STORE_POSTGRES_PASSWORD (match infra)}@store-postgres:5432/store?sslmode=disable
+      DATABASE_URL: postgres://store@store-postgres:5432/store?sslmode=disable
+      PGPASSWORD: ${STORE_POSTGRES_PASSWORD:?set STORE_POSTGRES_PASSWORD (match infra)}
       # ── baked defaults (edit here to change) ──
       STORE_HTTP_ADDR: ":8080"
       STORE_STATS_URL: "http://stats:8080"

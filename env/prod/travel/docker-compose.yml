@@ -11,7 +11,8 @@ services:
       # ── fill by hand in .env ──
       # Only the password is a secret; host/db/user are baked (known from
       # env/prod/infra). Must equal TRAVEL_POSTGRES_PASSWORD in env/prod/infra/.env.
-      DATABASE_URL: postgres://travel:${TRAVEL_POSTGRES_PASSWORD:?set TRAVEL_POSTGRES_PASSWORD (match infra)}@travel-postgres:5432/travel?sslmode=disable
+      DATABASE_URL: postgres://travel@travel-postgres:5432/travel?sslmode=disable
+      PGPASSWORD: ${TRAVEL_POSTGRES_PASSWORD:?set TRAVEL_POSTGRES_PASSWORD (match infra)}
       # ── baked defaults (edit here to change) ──
       TRAVEL_HTTP_ADDR: ":8080"
       TRAVEL_STATS_URL: "http://stats:8080"

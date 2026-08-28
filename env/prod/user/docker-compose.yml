@@ -14,7 +14,8 @@ services:
       # ── fill by hand in .env ──
       # Only the password is a secret; host/db/user are baked (known from
       # env/prod/infra). Must equal USER_POSTGRES_PASSWORD in env/prod/infra/.env.
-      DATABASE_URL: postgres://user:${USER_POSTGRES_PASSWORD:?set USER_POSTGRES_PASSWORD (match infra)}@user-postgres:5432/user?sslmode=disable
+      DATABASE_URL: postgres://user@user-postgres:5432/user?sslmode=disable
+      PGPASSWORD: ${USER_POSTGRES_PASSWORD:?set USER_POSTGRES_PASSWORD (match infra)}
       # Optional — comma-separated moderator user ids (unlocks the Moderation queue).
       USER_ADMIN_IDS: ${USER_ADMIN_IDS-}
       # ── baked defaults (edit here to change) ──
