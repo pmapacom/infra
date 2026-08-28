@@ -3,20 +3,18 @@
 # published port and authenticates every request (auth_request → auth), then
 # routes by proto domain to the back-ends over the shared pmapa network.
 #
-# Mounts the same nginx config used everywhere else (env/gateway/*), so the
-# request path is identical to local + the test contour. No .env — nothing here
-# is a secret; to change the public port, edit the ports mapping below.
+# The nginx config is BAKED INTO the image (built from env/gateway by the infra
+# CI) — no host bind mounts, which are fragile under Portainer git stacks. To
+# change the config: edit env/gateway/* and push; CI rebuilds the image, then
+# redeploy this stack. No .env — to change the public port, edit the mapping below.
 #
-#   docker compose up -d
+#   docker compose pull && docker compose up -d
 name: pmapa-gateway
 
 services:
   gateway:
-    image: nginx:alpine
+    image: ghcr.io/pmapacom/gateway:latest
     restart: unless-stopped
-    volumes:
-      - ../../gateway/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ../../gateway/snippets:/etc/nginx/gateway/snippets:ro
     ports:
       # Public HTTP port (behind your TLS edge) : container listens on :8080.
       - "80:8080"
