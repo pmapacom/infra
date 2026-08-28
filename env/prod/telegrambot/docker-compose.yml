@@ -11,9 +11,10 @@ services:
       # ── fill by hand in .env ──
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?set the Telegram bot token}
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:?set the Telegram chat id}
-      # Optional: reach the Bot API through a reverse proxy (a Cloudflare Worker)
-      # when api.telegram.org is blocked from your host. Empty ⇒ talk to Telegram
-      # directly. See cloudflare-worker.js + README in this folder.
+      # Optional FALLBACK Bot API base (a Cloudflare Worker in front of Telegram).
+      # The bot always tries api.telegram.org first and only fails over to this
+      # when the direct endpoint is unreachable. Empty ⇒ direct only. See
+      # cloudflare-worker.js + README in this folder.
       TELEGRAM_API_BASE: ${TELEGRAM_API_BASE-}
       # ── baked defaults (edit here to change) ──
       TELEGRAM_HTTP_ADDR: ":8080"

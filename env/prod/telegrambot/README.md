@@ -23,7 +23,7 @@ fails (`os.Exit(1)`) if unset.
 
 | Variable | Purpose |
 |----------|---------|
-| `TELEGRAM_API_BASE` | Bot API root. Set to a Cloudflare Worker URL when `api.telegram.org` is blocked from your host (see below); unset ⇒ talk to Telegram directly. |
+| `TELEGRAM_API_BASE` | **Fallback** Bot API base. The bot tries `api.telegram.org` first and only fails over to this when the direct endpoint is unreachable — set it to a Cloudflare Worker URL when your host blocks Telegram (see below). Unset ⇒ direct only. |
 
 ### Baked into docker-compose.yml (edit the file to change)
 
