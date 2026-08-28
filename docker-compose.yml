@@ -228,8 +228,8 @@ services:
   auth:
     build:
       # Repo root: the Dockerfile copies the local proto module (replace ../proto).
-      context: .
-      dockerfile: auth/Dockerfile
+      context: ./auth
+      dockerfile: Dockerfile
     restart: unless-stopped
     environment:
       DATABASE_URL: "postgres://auth:${POSTGRES_PASSWORD}@auth-postgres:5432/auth?sslmode=disable"
@@ -263,8 +263,8 @@ services:
 
   user:
     build:
-      context: .
-      dockerfile: user/Dockerfile
+      context: ./user
+      dockerfile: Dockerfile
     restart: unless-stopped
     environment:
       DATABASE_URL: "postgres://user:${POSTGRES_PASSWORD}@user-postgres:5432/user?sslmode=disable"
@@ -285,8 +285,8 @@ services:
 
   travel:
     build:
-      context: .
-      dockerfile: travel/Dockerfile
+      context: ./travel
+      dockerfile: Dockerfile
     restart: unless-stopped
     environment:
       DATABASE_URL: "postgres://travel:${POSTGRES_PASSWORD}@travel-postgres:5432/travel?sslmode=disable"
@@ -301,8 +301,8 @@ services:
 
   post:
     build:
-      context: .
-      dockerfile: post/Dockerfile
+      context: ./post
+      dockerfile: Dockerfile
     restart: unless-stopped
     environment:
       DATABASE_URL: "postgres://post:${POSTGRES_PASSWORD}@post-postgres:5432/post?sslmode=disable"
@@ -323,8 +323,8 @@ services:
 
   store:
     build:
-      context: .
-      dockerfile: store/Dockerfile
+      context: ./store
+      dockerfile: Dockerfile
     restart: unless-stopped
     environment:
       DATABASE_URL: "postgres://store:${POSTGRES_PASSWORD}@store-postgres:5432/store?sslmode=disable"
@@ -339,8 +339,8 @@ services:
 
   message:
     build:
-      context: .
-      dockerfile: message/Dockerfile
+      context: ./message
+      dockerfile: Dockerfile
     restart: unless-stopped
     environment:
       DATABASE_URL: "postgres://message:${POSTGRES_PASSWORD}@message-postgres:5432/message?sslmode=disable"
@@ -362,8 +362,8 @@ services:
 
   media:
     build:
-      context: .
-      dockerfile: media/Dockerfile
+      context: ./media
+      dockerfile: Dockerfile
     restart: unless-stopped
     environment:
       DATABASE_URL: "postgres://media:${POSTGRES_PASSWORD}@media-postgres:5432/media?sslmode=disable"
@@ -394,8 +394,8 @@ services:
   # .env, or set NOTIFICATION_SMTP_HOST= (empty) to log emails instead.
   notification:
     build:
-      context: .
-      dockerfile: notification/Dockerfile
+      context: ./notification
+      dockerfile: Dockerfile
     restart: unless-stopped
     environment:
       NOTIFICATION_HTTP_ADDR: ":8080"
@@ -437,8 +437,8 @@ services:
   # `docker compose --profile ops up` after setting TELEGRAM_BOT_TOKEN/CHAT_ID.
   telegrambot:
     build:
-      context: .
-      dockerfile: telegrambot/Dockerfile
+      context: ./telegrambot
+      dockerfile: Dockerfile
     restart: unless-stopped
     profiles: ["ops"]
     environment:
@@ -479,8 +479,8 @@ services:
 
   stats:
     build:
-      context: .
-      dockerfile: stats/Dockerfile
+      context: ./stats
+      dockerfile: Dockerfile
     restart: unless-stopped
     environment:
       REDIS_URL: "redis://:${REDIS_PASSWORD}@stats-redis:6379/0"
