@@ -19,6 +19,12 @@ fails (`os.Exit(1)`) if unset.
 | `TELEGRAM_BOT_TOKEN` | Telegram bot token. |
 | `TELEGRAM_CHAT_ID` | Target chat id for alerts + reports. |
 
+### Optional (in .env)
+
+| Variable | Purpose |
+|----------|---------|
+| `TELEGRAM_API_BASE` | Bot API root. Set to a Cloudflare Worker URL when `api.telegram.org` is blocked from your host (see below); unset ⇒ talk to Telegram directly. |
+
 ### Baked into docker-compose.yml (edit the file to change)
 
 | Variable | Default | Purpose |
@@ -43,3 +49,24 @@ cp .env.example .env && $EDITOR .env
 docker compose pull && docker compose up -d
 docker compose logs -f telegrambot
 ```
+
+## Telegram blocked from your host? (Cloudflare Worker — no extra container)
+
+If the server can't reach `api.telegram.org` (`dial tcp … i/o timeout`, common
+where Telegram is region-blocked), route the Bot API through a **Cloudflare
+Worker** — serverless, free tier, nothing to run on your box.
+
+1. Cloudflare dashboard → **Workers & Pages** → **Create** → **Worker**. Give it
+   a name (e.g. `pmapa-tg`), **Deploy**.
+2. **Edit code** → paste [`cloudflare-worker.js`](cloudflare-worker.js) → **Deploy**.
+   You now have a URL like `https://pmapa-tg.<subdomain>.workers.dev`.
+3. Test it (should return Telegram JSON `{"ok":true,...}`):
+   `curl https://pmapa-tg.<subdomain>.workers.dev/bot<token>/getMe`
+4. Set it in this stack's `.env` and redeploy:
+   `TELEGRAM_API_BASE=https://pmapa-tg.<subdomain>.workers.dev`
+   `docker compose up -d`
+
+The Worker forwards every call unchanged to Telegram (long-poll included), so the
+bot behaves identically — it just exits through Cloudflare's network. The token
+only ever travels in the path, and the Worker refuses non-`/bot` paths so it
+isn't a generic open proxy.
