@@ -489,6 +489,22 @@ services:
       stats-redis:
         condition: service_healthy
 
+  # ─────────────────────────────── web app ────────────────────────────
+  # Flutter web bundle served as static files. Opt-in (profile "web") so the
+  # default `docker compose up` stays lean; the gateway's `location /` routes to
+  # `app:8080`. Bring it up with: docker compose --profile web up -d
+  #   Build context is the repo root (app/ needs proto/gen/dart alongside it).
+  app:
+    build:
+      context: .
+      dockerfile: app/Dockerfile
+      args:
+        # Local web build talks to the local gateway (same origin as :8088).
+        PMAPA_API_URL: http://localhost:${GATEWAY_PORT:-8088}
+    restart: unless-stopped
+    profiles: ["web"]
+    # No published ports — reachable only via the gateway.
+
   # ───────────────────────────── gateway ──────────────────────────────
   gateway:
     image: nginx:alpine

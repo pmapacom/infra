@@ -1,0 +1,20 @@
+# Applies ONLY to Docker builds whose context is this repo root — currently just
+# the web app image (app/Dockerfile needs app/ + proto/gen/dart together). Every
+# Go service builds from its own ./<svc> subdir, so this file never affects them.
+#
+# Keep only the two trees the app build reads; drop everything else so the
+# context stays small.
+*
+!app
+!proto
+
+# Trim the heavy / rebuilt-from-source parts of the two we kept.
+app/build
+app/.dart_tool
+app/coverage
+app/ios
+app/android
+app/macos
+app/.git
+proto/gen/go
+proto/.git

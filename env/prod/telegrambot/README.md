@@ -33,6 +33,7 @@ fails (`os.Exit(1)`) if unset.
 | `TELEGRAM_POLL_INTERVAL` | `30s` | How often to poll `/readyz` + logs. |
 | `TELEGRAM_REPORT_INTERVAL` | `24h` | Status+stats report cadence. |
 | `TELEGRAM_ALERT_COOLDOWN` | `5m` | Min gap between error alerts per service. |
+| `TELEGRAM_DOWN_AFTER` | `90s` | Grace before a down service is alerted. A redeploy (old container killed, new one still starting) recovers inside this window and stays silent — so deploys don't spam DOWN → recovered. `0` alerts on the first failed poll. |
 
 ## Requirements
 

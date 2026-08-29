@@ -1,0 +1,19 @@
+# Web app — the Flutter web bundle served as static files by nginx. It has NO
+# published ports: the gateway proxies "/" here (same origin as the API), so the
+# browser reaches the back-ends without CORS and DPoP's host binding stays intact.
+#
+# The image is built + pushed by the app repo CI (see app/.github/workflows/
+# app-image.yml). To ship a new build:
+#   docker compose pull && docker compose up -d
+name: pmapa-app
+
+services:
+  app:
+    image: ghcr.io/pmapacom/app:latest
+    restart: unless-stopped
+    # No published ports — reachable only via the gateway (location / → app:8080).
+
+networks:
+  default:
+    name: pmapa
+    external: true

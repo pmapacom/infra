@@ -21,6 +21,10 @@ services:
       TELEGRAM_POLL_INTERVAL: "30s"
       TELEGRAM_REPORT_INTERVAL: "24h"
       TELEGRAM_ALERT_COOLDOWN: "5m"
+      # Grace before a down service is alerted: a redeploy (old container killed,
+      # new one still starting) recovers inside this window and stays silent, so
+      # deploys don't spam DOWN → recovered. Raise it if a cold start outlasts 90s.
+      TELEGRAM_DOWN_AFTER: "90s"
       TELEGRAM_SERVICES: "auth=http://auth:8080,user=http://user:8080,travel=http://travel:8080,post=http://post:8080,message=http://message:8080,store=http://store:8080,media=http://media:8080,notification=http://notification:8080,stats=http://stats:8080"
 
 networks:
