@@ -25,7 +25,14 @@ services:
       REDIS_URL: redis://auth-redis:6379/0
       REDIS_PASSWORD: ${AUTH_REDIS_PASSWORD:?set AUTH_REDIS_PASSWORD (match infra)}
       AUTH_SIGNING_KEY_SEED: ${AUTH_SIGNING_KEY_SEED:?set a base64 32-byte seed}
-      # Optional — social login accepted OIDC client ids; unset ⇒ disabled.
+      # Optional — social login OAuth client ids (one per platform); all unset
+      # ⇒ disabled. Only client ids are needed (no secrets/key files). The
+      # combined *_CLIENT_IDS lists still work and are merged with these.
+      AUTH_OIDC_GOOGLE_CLIENT_ID_WEB: ${AUTH_OIDC_GOOGLE_CLIENT_ID_WEB-}
+      AUTH_OIDC_GOOGLE_CLIENT_ID_ANDROID: ${AUTH_OIDC_GOOGLE_CLIENT_ID_ANDROID-}
+      AUTH_OIDC_GOOGLE_CLIENT_ID_IOS: ${AUTH_OIDC_GOOGLE_CLIENT_ID_IOS-}
+      AUTH_OIDC_APPLE_CLIENT_ID_IOS: ${AUTH_OIDC_APPLE_CLIENT_ID_IOS-}
+      AUTH_OIDC_APPLE_CLIENT_ID_WEB: ${AUTH_OIDC_APPLE_CLIENT_ID_WEB-}
       AUTH_OIDC_GOOGLE_CLIENT_IDS: ${AUTH_OIDC_GOOGLE_CLIENT_IDS-}
       AUTH_OIDC_APPLE_CLIENT_IDS: ${AUTH_OIDC_APPLE_CLIENT_IDS-}
       # ── baked defaults (edit here to change) ──

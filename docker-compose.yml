@@ -246,8 +246,14 @@ services:
       AUTH_TRAVEL_URL: ${AUTH_TRAVEL_URL-http://travel:8080}
       AUTH_MESSAGE_URL: ${AUTH_MESSAGE_URL-http://message:8080}
       AUTH_MEDIA_URL: ${AUTH_MEDIA_URL-http://media:8080}
-      # Social login (Sign in with Google/Apple): comma-separated accepted
-      # client ids per provider; empty ⇒ that provider is disabled.
+      # Social login (Sign in with Google/Apple): OAuth client id per platform
+      # (only client ids are needed, no secrets); all empty ⇒ disabled. The
+      # combined *_CLIENT_IDS lists still work and are merged with these.
+      AUTH_OIDC_GOOGLE_CLIENT_ID_WEB: ${AUTH_OIDC_GOOGLE_CLIENT_ID_WEB:-}
+      AUTH_OIDC_GOOGLE_CLIENT_ID_ANDROID: ${AUTH_OIDC_GOOGLE_CLIENT_ID_ANDROID:-}
+      AUTH_OIDC_GOOGLE_CLIENT_ID_IOS: ${AUTH_OIDC_GOOGLE_CLIENT_ID_IOS:-}
+      AUTH_OIDC_APPLE_CLIENT_ID_IOS: ${AUTH_OIDC_APPLE_CLIENT_ID_IOS:-}
+      AUTH_OIDC_APPLE_CLIENT_ID_WEB: ${AUTH_OIDC_APPLE_CLIENT_ID_WEB:-}
       AUTH_OIDC_GOOGLE_CLIENT_IDS: ${AUTH_OIDC_GOOGLE_CLIENT_IDS:-}
       AUTH_OIDC_APPLE_CLIENT_IDS: ${AUTH_OIDC_APPLE_CLIENT_IDS:-}
     depends_on:
