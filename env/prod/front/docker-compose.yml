@@ -1,0 +1,19 @@
+# Next.js web frontend — SSR Node server served same-origin with the API.
+# The gateway proxies "/" here so the browser talks to the back-ends without
+# CORS and DPoP's host binding stays intact. No published ports.
+#
+# The image is built + pushed by the front repo CI (front/.github/workflows/
+# ui-image.yml) on every push to main. To ship a new build:
+#   docker compose pull && docker compose up -d
+name: pmapa-front
+
+services:
+  front:
+    image: ghcr.io/pmapacom/front:latest
+    restart: unless-stopped
+    # No published ports — reachable only via the gateway (location / → front:8080).
+
+networks:
+  default:
+    name: pmapa
+    external: true
