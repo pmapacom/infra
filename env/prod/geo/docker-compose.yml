@@ -1,0 +1,22 @@
+# Cloud app tier for the geo service — stateless reference data, scale to N
+# replicas. No .env: the service has no database, no secrets and nothing to
+# configure per environment. INTERNAL-only, no published port.
+#
+#   docker compose pull && docker compose up -d
+name: pmapa-geo
+
+services:
+  geo:
+    image: ghcr.io/pmapacom/geo:latest
+    restart: unless-stopped
+    # Only the shared RPC network — there is no geo-data tier to join.
+    networks: [pmapa]
+    environment:
+      # ── baked defaults (edit here to change) ──
+      GEO_HTTP_ADDR: ":8080"
+      # The GeoNames dump ships inside the image; no volume, no seed job.
+      GEO_CITIES_PATH: "/data/cities500.txt"
+
+networks:
+  pmapa:
+    external: true

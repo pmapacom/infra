@@ -30,6 +30,7 @@ sensible default — secrets, connection strings — come from `.env`.
 | `media/` | image uploads → S3 — needs Postgres + S3 | no |
 | `notification/` | email + in-app feed + push — needs Postgres + SMTP | no |
 | `stats/` | metric store — needs Redis | no |
+| `geo/` | place dictionary (countries + cities) — no state, **public route** | no |
 | `telegrambot/` | ops alerts (opt-in) | no |
 
 Every service listens on `:8080` inside the network and is reachable **only via
@@ -64,7 +65,7 @@ docker compose up -d
 cd ../auth
 cp .env.example .env && $EDITOR .env
 docker compose pull && docker compose up -d
-# repeat for user, travel, post, store, message, media, notification, stats
+# repeat for user, travel, post, store, message, media, notification, stats, geo
 
 # 4. the front door, last (no .env needed)
 cd ../gateway && docker compose up -d
@@ -81,6 +82,12 @@ cd env/prod/auth && docker compose up -d --scale auth=3
 - **Images.** The image + tag is baked into each `docker-compose.yml`
   (`image: ghcr.io/pmapacom/<svc>:latest`) — edit that line to pin a tag. Build +
   push from the repo root, e.g. `docker build -f auth/Dockerfile -t ghcr.io/pmapacom/auth:latest . && docker push ghcr.io/pmapacom/auth:latest`.
+- **`geo` has no `.env`.** It is the one service with no database and no
+  secrets: both dictionaries are baked into its image, so a container is
+  disposable. Its gateway route is **public** (no `auth_request`) — a place
+  dictionary is not user data and `/explore` must work signed-out. That route
+  ships in the gateway image, so adding it needs a gateway redeploy; until
+  `geo` is up the route answers 502, which is why it is worth starting first.
 - **What goes in `.env`.** Only secrets — data-tier **passwords**, the signing
   seed, SMTP creds. Connection strings are baked (password-free); the password is
   handed to the service out-of-band via `PGPASSWORD` / `REDIS_PASSWORD`, so it may

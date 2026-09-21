@@ -457,7 +457,8 @@ services:
       TELEGRAM_SERVICES: >-
         auth=http://auth:8080,user=http://user:8080,travel=http://travel:8080,
         post=http://post:8080,message=http://message:8080,store=http://store:8080,
-        media=http://media:8080,notification=http://notification:8080,stats=http://stats:8080
+        media=http://media:8080,notification=http://notification:8080,stats=http://stats:8080,
+        geo=http://geo:8080
 
   # ────────────────────────────── stats ───────────────────────────────
   # INTERNAL-ONLY metrics store: services push named metrics (Set/Inc) and
@@ -495,6 +496,21 @@ services:
       stats-redis:
         condition: service_healthy
 
+  # ──────────────────────────────── geo ───────────────────────────────
+  # PUBLIC place dictionary: the ISO 3166-1 country list (embedded in the
+  # binary) + the GeoNames cities500 tier (~236k places, baked into the image
+  # from geo/data). Pure reference data — no database, no volume, no seed job.
+  # Routed through the gateway WITHOUT auth so /explore works signed-out.
+  geo:
+    build:
+      context: ./geo
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      GEO_HTTP_ADDR: ":8080"
+      GEO_CITIES_PATH: "/data/cities500.txt"
+    # No published ports — reachable only via the gateway.
+
   # ─────────────────────────────── web app ────────────────────────────
   # Flutter web bundle served as static files. Opt-in (profile "web") so the
   # default `docker compose up` stays lean; the gateway's `location /` routes to
@@ -524,6 +540,7 @@ services:
       - auth
       - user
       - travel
+      - geo
 
 volumes:
   auth-pgdata:
