@@ -121,6 +121,24 @@ services:
       timeout: 5s
       retries: 15
 
+  # ─────────────────────────────── stay (Postgres) ───────────────────────────
+  stay-postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: stay
+      POSTGRES_PASSWORD: ${STAY_POSTGRES_PASSWORD:?set STAY_POSTGRES_PASSWORD}
+      POSTGRES_DB: stay
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+    volumes:
+      - stay-pgdata:/var/lib/postgresql/data
+    networks: [stay-data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stay -d stay"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
   # ───────────────────────────── message (Postgres) ──────────────────────────
   message-postgres:
     image: postgres:17-alpine
@@ -245,6 +263,9 @@ networks:
   store-data:
     name: store-data
     internal: true
+  stay-data:
+    name: stay-data
+    internal: true
   message-data:
     name: message-data
     internal: true
@@ -265,6 +286,7 @@ volumes:
   travel-pgdata:
   post-pgdata:
   store-pgdata:
+  stay-pgdata:
   message-pgdata:
   media-pgdata:
   notification-pgdata:

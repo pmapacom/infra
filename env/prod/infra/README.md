@@ -35,6 +35,7 @@ Each store sits on its **own internal network** — nothing else can reach it:
 | `travel-data` | travel-postgres | travel |
 | `post-data` | post-postgres | post |
 | `store-data` | store-postgres | store |
+| `stay-data` | stay-postgres | stay |
 | `message-data` | message-postgres | message |
 | `media-data` | media-postgres, minio | media |
 | `notification-data` | notification-postgres | notification |
@@ -61,6 +62,7 @@ reference block at the bottom of `.env.example` lists those strings.
 | `TRAVEL_POSTGRES_PASSWORD` | travel-postgres |
 | `POST_POSTGRES_PASSWORD` | post-postgres |
 | `STORE_POSTGRES_PASSWORD` | store-postgres |
+| `STAY_POSTGRES_PASSWORD` | stay-postgres |
 | `MESSAGE_POSTGRES_PASSWORD` | message-postgres |
 | `MEDIA_POSTGRES_PASSWORD` | media-postgres |
 | `NOTIFICATION_POSTGRES_PASSWORD` | notification-postgres |

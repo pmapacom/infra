@@ -1,0 +1,24 @@
+# Cloud app tier for the stay service — stateless, scale to N replicas.
+# Defaults baked in below; fill only DATABASE_URL in .env. No published port.
+name: pmapa-stay
+
+services:
+  stay:
+    image: ghcr.io/pmapacom/stay:latest
+    restart: unless-stopped
+    networks: [pmapa, stay-data]
+    environment:
+      # ── fill by hand in .env ──
+      # Only the password is a secret; host/db/user are baked (known from
+      # env/prod/infra). Must equal STAY_POSTGRES_PASSWORD in env/prod/infra/.env.
+      DATABASE_URL: postgres://stay@stay-postgres:5432/stay?sslmode=disable
+      PGPASSWORD: ${STAY_POSTGRES_PASSWORD:?set STAY_POSTGRES_PASSWORD (match infra)}
+      # ── baked defaults (edit here to change) ──
+      STAY_HTTP_ADDR: ":8080"
+      STAY_STATS_URL: "http://stats:8080"
+
+networks:
+  pmapa:
+    external: true
+  stay-data:
+    external: true

@@ -181,6 +181,25 @@ services:
       timeout: 5s
       retries: 15
 
+  # ───────────────────────────── stay data tier ──────────────────
+  stay-postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: stay
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: stay
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+    ports:
+      - "127.0.0.1:${STAY_POSTGRES_PORT:-5440}:5432"
+    volumes:
+      - stay-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stay -d stay"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
   # ───────────────────────────── dev mail ─────────────────────────────
   # Mailpit catches all outgoing mail (password resets) so no real SMTP or
   # credentials are needed locally. Inbox UI: http://localhost:8025.
@@ -343,6 +362,22 @@ services:
         condition: service_started
     # No published ports — reachable only via the gateway.
 
+  stay:
+    build:
+      context: ./stay
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: "postgres://stay:${POSTGRES_PASSWORD}@stay-postgres:5432/stay?sslmode=disable"
+      STAY_HTTP_ADDR: ":8080"
+      STAY_STATS_URL: ${STAY_STATS_URL-http://stats:8080}
+    depends_on:
+      stay-postgres:
+        condition: service_healthy
+      stats:
+        condition: service_started
+    # No published ports — reachable only via the gateway.
+
   message:
     build:
       context: ./message
@@ -458,7 +493,7 @@ services:
         auth=http://auth:8080,user=http://user:8080,travel=http://travel:8080,
         post=http://post:8080,message=http://message:8080,store=http://store:8080,
         media=http://media:8080,notification=http://notification:8080,stats=http://stats:8080,
-        geo=http://geo:8080
+        geo=http://geo:8080,stay=http://stay:8080
 
   # ────────────────────────────── stats ───────────────────────────────
   # INTERNAL-ONLY metrics store: services push named metrics (Set/Inc) and
@@ -550,6 +585,7 @@ volumes:
   travel-pgdata:
   post-pgdata:
   store-pgdata:
+  stay-pgdata:
   message-pgdata:
   media-pgdata:
   notification-pgdata:

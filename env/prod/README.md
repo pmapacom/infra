@@ -26,6 +26,7 @@ sensible default — secrets, connection strings — come from `.env`.
 | `travel/` | trips document store — needs Postgres | no |
 | `post/` | posts/feed — needs Postgres | no |
 | `store/` | goods classifieds — needs Postgres | no |
+| `stay/` | rent/buy listings — needs Postgres, **public browsing** | no |
 | `message/` | chat — needs Postgres | no |
 | `media/` | image uploads → S3 — needs Postgres + S3 | no |
 | `notification/` | email + in-app feed + push — needs Postgres + SMTP | no |
@@ -65,7 +66,7 @@ docker compose up -d
 cd ../auth
 cp .env.example .env && $EDITOR .env
 docker compose pull && docker compose up -d
-# repeat for user, travel, post, store, message, media, notification, stats, geo
+# repeat for user, travel, post, store, stay, message, media, notification, stats, geo
 
 # 4. the front door, last (no .env needed)
 cd ../gateway && docker compose up -d

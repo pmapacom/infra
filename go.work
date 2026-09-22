@@ -9,6 +9,7 @@ use (
 	./post
 	./proto/gen/go
 	./stats
+	./stay
 	./store
 	./svckit
 	./telegrambot
