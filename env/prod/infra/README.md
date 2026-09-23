@@ -78,9 +78,13 @@ reference block at the bottom of `.env.example` lists those strings.
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `MINIO_ROOT_USER` | `pmapa` | S3 access key (→ media's `MEDIA_S3_ACCESS_KEY`). |
-| `MINIO_ROOT_PASSWORD` | (none — set it) | S3 secret key (→ media's `MEDIA_S3_SECRET_KEY`). |
-| `MEDIA_S3_BUCKET` | `pmapa-media` | Bucket `minio-init` creates (→ media's `MEDIA_S3_BUCKET`). |
+| `MINIO_ROOT_USER` | `pmapa` | S3 access key — a **name**, not a password. Short, plain ASCII; `mc` cannot build an alias from a generated secret, and `minio-init` then exits 1 without creating the bucket. |
+| `MINIO_ROOT_PASSWORD` | (none — set it) | S3 secret key. Plain ASCII — it signs every request. |
+| `MEDIA_S3_BUCKET` | `pmapa-media` | Bucket **name** `minio-init` creates. Lowercase letters, digits and hyphens, 3–63 chars; the media service refuses to start otherwise. |
+
+> If uploads fail with "internal error" while everything looks healthy, check
+> `minio-init`: it is a one-shot, so a failure leaves it `exited (1)` and the
+> bucket missing. `media` says so at boot too.
 
 ## Deploy — bring this up **first**
 
