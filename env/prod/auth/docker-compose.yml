@@ -25,15 +25,26 @@ services:
       REDIS_URL: redis://auth-redis:6379/0
       REDIS_PASSWORD: ${AUTH_REDIS_PASSWORD:?set AUTH_REDIS_PASSWORD (match infra)}
       AUTH_SIGNING_KEY_SEED: ${AUTH_SIGNING_KEY_SEED:?set a base64 32-byte seed}
-      # Optional — social login OAuth client ids (one per platform); all unset
-      # ⇒ disabled. Only client ids are needed (no secrets/key files). The
-      # combined *_CLIENT_IDS lists still work and are merged with these.
-      AUTH_OIDC_GOOGLE_CLIENT_ID_WEB: ${AUTH_OIDC_GOOGLE_CLIENT_ID_WEB-}
-      AUTH_OIDC_GOOGLE_CLIENT_ID_ANDROID: ${AUTH_OIDC_GOOGLE_CLIENT_ID_ANDROID-}
-      AUTH_OIDC_GOOGLE_CLIENT_ID_IOS: ${AUTH_OIDC_GOOGLE_CLIENT_ID_IOS-}
+      # Social login OAuth client ids (one per platform); all unset ⇒ disabled.
+      # Only client ids are needed — no secrets, no key files. A Google client
+      # id is public by design: it is the `aud` of the ID token and is visible
+      # in any page or app binary that uses it, so these are defaults here
+      # rather than stack secrets. The service MERGES every value below, so a
+      # token is accepted whichever platform minted it — adding one never
+      # invalidates another. Override any of them from the stack environment.
+      #
+      # Project pmapa-507107 (console.cloud.google.com → Clients):
+      #   web      → the pmapa.com site (JS origin https://pmapa.com)
+      #   android  → the Play build
+      #   ios      → the App Store build
+      AUTH_OIDC_GOOGLE_CLIENT_ID_WEB: ${AUTH_OIDC_GOOGLE_CLIENT_ID_WEB-509452346817-obblrgvasch8ngk2006a6i1h5okmutmg.apps.googleusercontent.com}
+      AUTH_OIDC_GOOGLE_CLIENT_ID_ANDROID: ${AUTH_OIDC_GOOGLE_CLIENT_ID_ANDROID-509452346817-hoa8ou0qp2titamopnupp88m15j7kmk0.apps.googleusercontent.com}
+      AUTH_OIDC_GOOGLE_CLIENT_ID_IOS: ${AUTH_OIDC_GOOGLE_CLIENT_ID_IOS-509452346817-naoojh6bu7khg8rui1epjchjp067ktk7.apps.googleusercontent.com}
       AUTH_OIDC_APPLE_CLIENT_ID_IOS: ${AUTH_OIDC_APPLE_CLIENT_ID_IOS-}
       AUTH_OIDC_APPLE_CLIENT_ID_WEB: ${AUTH_OIDC_APPLE_CLIENT_ID_WEB-}
-      AUTH_OIDC_GOOGLE_CLIENT_IDS: ${AUTH_OIDC_GOOGLE_CLIENT_IDS-}
+      # Anything extra, comma-separated — e.g. the localhost web client used
+      # for local development (origin http://localhost:8080).
+      AUTH_OIDC_GOOGLE_CLIENT_IDS: ${AUTH_OIDC_GOOGLE_CLIENT_IDS-509452346817-13k4thi73iu7dhu59ts861abseldfvkc.apps.googleusercontent.com}
       AUTH_OIDC_APPLE_CLIENT_IDS: ${AUTH_OIDC_APPLE_CLIENT_IDS-}
       # ── baked defaults (edit here to change) ──
       AUTH_HTTP_ADDR: ":8080"
