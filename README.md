@@ -21,7 +21,7 @@ single front door for every service.
 | `message/` | Message service — 1:1/group chat, governance, live `Subscribe` stream, search, retention |
 | `store/` | Store service — goods classifieds + favourites |
 | `stats/` | Stats service — generic Redis named-metric store (`Get`/`BatchGet`/`List`) |
-| `media/` | Media service — image uploads → S3/MinIO + public `/media/{id}` |
+| `media/` | Media service — image uploads → S3 (Cloudflare R2 in prod, MinIO locally) + public `/media/{id}`, read from the CDN when configured |
 | `notification/` | Notification service — outbound email (SMTP) + in-app activity feed + push tokens/prefs |
 | `telegrambot/` | Ops bot — polls `/readyz`/`/internal/logz`/`/internal/stats`, alerts + reports to Telegram (opt-in `--profile ops`) |
 | `svckit/` | Shared service toolkit — server/config/identity + Postgres helpers |
@@ -103,8 +103,10 @@ its **read/prefs RPCs** through the gateway (auth allowlist).
 Two dev-infrastructure containers make everything testable with zero external
 accounts:
 
-- **MinIO** — local S3 for the media service (bucket auto-created).
-  Console: http://localhost:9001, `minioadmin`/`minioadmin`.
+- **MinIO** — local S3 for the media service (bucket auto-created), the dev
+  stand-in for Cloudflare R2. Console: http://localhost:9001,
+  `minioadmin`/`minioadmin`. It is not a public origin, so `MEDIA_S3_PUBLIC_BASE_URL`
+  stays empty locally and the service proxies reads as before.
 - **Mailpit** — catches all outgoing email (password resets).
   Inbox: http://localhost:8025.
 

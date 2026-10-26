@@ -419,6 +419,10 @@ services:
       MEDIA_S3_SECRET_KEY: ${MEDIA_S3_SECRET_KEY:-minioadmin}
       MEDIA_S3_PREFIX: ${MEDIA_S3_PREFIX:-media/}
       MEDIA_S3_PATH_STYLE: ${MEDIA_S3_PATH_STYLE:-true}
+      # Empty locally: MinIO is not a public origin, so reads are proxied by the
+      # media service. Set it (to a Cloudflare custom domain on the R2 bucket)
+      # to serve reads from the CDN instead — see .env.example.
+      MEDIA_S3_PUBLIC_BASE_URL: ${MEDIA_S3_PUBLIC_BASE_URL-}
     depends_on:
       media-postgres:
         condition: service_healthy

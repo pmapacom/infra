@@ -1,8 +1,12 @@
-# env/prod/infra — on-box data tier (all DBs + storage)
+# env/prod/infra — on-box data tier (all DBs)
 
 The whole **stateful** backing tier for a single-machine deployment: one Postgres
-per service, Redis for auth + stats, and MinIO (S3) for media. One `docker
-compose up` here brings up everything the app services need to connect to.
+per service and Redis for auth + stats. One `docker compose up` here brings up
+everything the app services need to connect to.
+
+There is **no object store on this box**: media bytes live in Cloudflare R2 and
+are read through the Cloudflare CDN, so `media-postgres` holds only the id ↔
+object metadata. See [env/prod/media](../media).
 
 Use this when you're running the entire stack on one box. The per-service data
 tiers under [env/db/*](../../db) still exist for isolated single-service runs;
@@ -17,7 +21,7 @@ Each store sits on its **own internal network** — nothing else can reach it:
     │
     └──[ auth-data (internal) ]── auth-postgres, auth-redis
    user ──[ user-data (internal) ]── user-postgres
-   media──[ media-data (internal) ]── media-postgres, minio
+   media──[ media-data (internal) ]── media-postgres   (bytes → Cloudflare R2)
    …
 ```
 
@@ -37,7 +41,7 @@ Each store sits on its **own internal network** — nothing else can reach it:
 | `store-data` | store-postgres | store |
 | `stay-data` | stay-postgres | stay |
 | `message-data` | message-postgres | message |
-| `media-data` | media-postgres, minio | media |
+| `media-data` | media-postgres | media |
 | `notification-data` | notification-postgres | notification |
 | `stats-data` | stats-redis | stats |
 
@@ -49,8 +53,8 @@ one in the matching service's connection string (`env/prod/<svc>/.env`); the
 reference block at the bottom of `.env.example` lists those strings.
 
 > **Passwords can contain any characters.** Services receive them out-of-band
-> (`PGPASSWORD` / `REDIS_PASSWORD` / MinIO env), never inside a connection URL, so
-> there's no URL-encoding to worry about. Generate however you like, e.g.
+> (`PGPASSWORD` / `REDIS_PASSWORD`), never inside a connection URL, so there's no
+> URL-encoding to worry about. Generate however you like, e.g.
 > `openssl rand -base64 30`.
 
 ### Postgres passwords (one per service)
@@ -74,17 +78,11 @@ reference block at the bottom of `.env.example` lists those strings.
 | `AUTH_REDIS_PASSWORD` | auth-redis |
 | `STATS_REDIS_PASSWORD` | stats-redis |
 
-### MinIO (S3 for media)
+### Object storage
 
-| Variable | Default | Purpose |
-|----------|---------|---------|
-| `MINIO_ROOT_USER` | `pmapa` | S3 access key — a **name**, not a password. Short, plain ASCII; `mc` cannot build an alias from a generated secret, and `minio-init` then exits 1 without creating the bucket. |
-| `MINIO_ROOT_PASSWORD` | (none — set it) | S3 secret key. Plain ASCII — it signs every request. |
-| `MEDIA_S3_BUCKET` | `pmapa-media` | Bucket **name** `minio-init` creates. Lowercase letters, digits and hyphens, 3–63 chars; the media service refuses to start otherwise. |
-
-> If uploads fail with "internal error" while everything looks healthy, check
-> `minio-init`: it is a one-shot, so a failure leaves it `exited (1)` and the
-> bucket missing. `media` says so at boot too.
+Nothing to set here. The media service reaches **Cloudflare R2** directly over
+the public internet with its own API token — that credential lives in
+`env/prod/media/.env`, not in this file.
 
 ## Deploy — bring this up **first**
 
@@ -107,7 +105,8 @@ point at the container names above — just keep the passwords in sync with this
 - **No published ports.** The stores are reachable only over their internal
   network. To inspect one from the host temporarily, add a `ports:` mapping (bind
   `127.0.0.1`) to that service — don't leave it in.
-- **MinIO.** The `minio-init` one-shot creates the `MEDIA_S3_BUCKET`. MinIO needs
-  path-style addressing — the media service ships with `MEDIA_S3_PATH_STYLE=true`.
+- **Media bytes are off-box.** They are in Cloudflare R2, so they are not covered
+  by any volume or backup here — only the metadata in `media-postgres` is. The
+  bucket's own durability and lifecycle are managed in Cloudflare.
 - **SMTP** is not part of this tier: notification uses an external relay (or logs
   when `NOTIFICATION_SMTP_HOST` is empty).
