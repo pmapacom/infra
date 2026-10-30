@@ -11,10 +11,10 @@ services:
     environment:
       # ── fill by hand in .env ──
       # Only the password is a secret; the database is EXTERNAL — database
-      # pmapa_notification on 80.66.64.227, login role pmapa_notification
+      # pmapa_notification on 80.66.64.227, shared login role pmapa_user
       # (see env/db/external).
-      NOTIFICATION_DATABASE_URL: postgres://pmapa_notification@80.66.64.227:5432/pmapa_notification?sslmode=require
-      PGPASSWORD: ${NOTIFICATION_POSTGRES_PASSWORD:?set NOTIFICATION_POSTGRES_PASSWORD (role pmapa_notification)}
+      NOTIFICATION_DATABASE_URL: postgres://pmapa_user@80.66.64.227:5432/pmapa_notification?sslmode=require
+      PGPASSWORD: ${PMAPA_DB_PASSWORD:?set PMAPA_DB_PASSWORD (shared role pmapa_user)}
       # SMTP relay. Leave NOTIFICATION_SMTP_HOST empty to log emails instead of sending.
       NOTIFICATION_SMTP_HOST: ${NOTIFICATION_SMTP_HOST?set the SMTP host (empty to log)}
       NOTIFICATION_SMTP_USERNAME: ${NOTIFICATION_SMTP_USERNAME-}

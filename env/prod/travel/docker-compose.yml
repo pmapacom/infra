@@ -10,9 +10,9 @@ services:
     environment:
       # ── fill by hand in .env ──
       # Only the password is a secret; the database is EXTERNAL — database
-      # pmapa_travel on 80.66.64.227, login role pmapa_travel (env/db/external).
-      DATABASE_URL: postgres://pmapa_travel@80.66.64.227:5432/pmapa_travel?sslmode=require
-      PGPASSWORD: ${TRAVEL_POSTGRES_PASSWORD:?set TRAVEL_POSTGRES_PASSWORD (role pmapa_travel)}
+      # pmapa_travel on 80.66.64.227, shared login role pmapa_user (env/db/external).
+      DATABASE_URL: postgres://pmapa_user@80.66.64.227:5432/pmapa_travel?sslmode=require
+      PGPASSWORD: ${PMAPA_DB_PASSWORD:?set PMAPA_DB_PASSWORD (shared role pmapa_user)}
       # ── baked defaults (edit here to change) ──
       TRAVEL_HTTP_ADDR: ":8080"
       TRAVEL_STATS_URL: "http://stats:8080"

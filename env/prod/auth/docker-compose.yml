@@ -18,13 +18,13 @@ services:
       # ── fill these by hand in .env ──
       # Passwords are passed OUT-OF-BAND (PGPASSWORD / REDIS_PASSWORD), never in the
       # URL — so any characters are safe (no URL-encoding needed).
-      # Postgres is EXTERNAL: this service owns the database pmapa_auth on
-      # 80.66.64.227 and logs in as the role pmapa_auth (see env/db/external).
+      # Postgres is EXTERNAL: this service uses the database pmapa_auth on
+      # 80.66.64.227 and logs in as the shared role pmapa_user (see env/db/external).
       # Redis is EXTERNAL too (managed): user `default`, db 0. Sharing one
       # instance with stats is safe — auth only writes `deny:*`, `dpop:*` and
       # `fail:*`, stats only `metric:*`, and neither ever runs FLUSHDB.
-      DATABASE_URL: postgres://pmapa_auth@80.66.64.227:5432/pmapa_auth?sslmode=require
-      PGPASSWORD: ${AUTH_POSTGRES_PASSWORD:?set AUTH_POSTGRES_PASSWORD (role pmapa_auth)}
+      DATABASE_URL: postgres://pmapa_user@80.66.64.227:5432/pmapa_auth?sslmode=require
+      PGPASSWORD: ${PMAPA_DB_PASSWORD:?set PMAPA_DB_PASSWORD (shared role pmapa_user)}
       REDIS_URL: redis://default@generative-thorough-birthday-92146.db.redis.io:18624/0
       REDIS_PASSWORD: ${AUTH_REDIS_PASSWORD:?set AUTH_REDIS_PASSWORD (external Redis)}
       AUTH_SIGNING_KEY_SEED: ${AUTH_SIGNING_KEY_SEED:?set a base64 32-byte seed}

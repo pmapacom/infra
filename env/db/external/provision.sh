@@ -1,28 +1,35 @@
 #!/usr/bin/env bash
-# PMapa — подготовка ВНЕШНЕГО Postgres: своя база + login-роль на каждый сервис.
+# PMapa — подготовка ВНЕШНЕГО Postgres: ОДНА login-роль pmapa_user + своя база
+# на каждый сервис.
 #
 #   PGPASSWORD=<админский> ./env/db/external/provision.sh
 #   PGPASSWORD=<админский> ./env/db/external/provision.sh --with-test
 #   ./env/db/external/provision.sh "postgres://postgres:pw@80.66.64.227:5432/postgres?sslmode=require"
 #
-# Имя базы = имя роли = pmapa_<svc>: pmapa_auth, pmapa_user, pmapa_travel, …
+# Роль одна на все сервисы — pmapa_user; база у каждого своя — pmapa_<svc>
+# (pmapa_auth, pmapa_user, pmapa_travel, …), владелец каждой базы — pmapa_user.
+# Все сервисы на одной машине, доступ к базе закрыт фаерволом по IP, а утечка
+# одного пароля = утечка всех, поэтому раздельные роли смысла не имеют: один
+# пользователь, один пароль. Разделение теперь только логическое (разные базы).
+#
 # Хост/порт по умолчанию — внешний сервер 80.66.64.227:5432 (переопределяется
 # DB_HOST / DB_PORT / DB_SSLMODE / DB_ADMIN_USER / DB_ADMIN_DB).
 #
 # Что делает (идемпотентно):
-#   1. роль pmapa_<svc> и базу pmapa_<svc> (владелец — эта роль);
+#   1. роль pmapa_user (один раз) и базу pmapa_<svc> (владелец — pmapa_user);
 #   2. pg_trgm и btree_gist внутри каждой базы (под админом, чтобы миграциям
 #      message/stay не требовался superuser);
 #   3. --with-test — ещё и базы pmapa_<svc>_test для интеграционных тестов;
 #   4. печатает готовые строки <SVC>_DATABASE_URL для корневого .env.
 #
-# ПАРОЛИ скрипт НЕ генерирует и НЕ меняет. Новая роль создаётся с паролем из
-# <SVC>_DB_PASSWORD (или с заглушкой change-me); существующая роль не трогается —
-# пароль меняется вручную: ALTER ROLE pmapa_travel PASSWORD '…';
+# ПАРОЛЬ скрипт НЕ генерирует и НЕ меняет. Роль создаётся с паролем из
+# PMAPA_DB_PASSWORD (или с заглушкой change-me); существующая роль не трогается —
+# пароль меняется вручную: ALTER ROLE pmapa_user PASSWORD '…';
 set -euo pipefail
 cd "$(dirname "$0")"
 
 PREFIX="pmapa_"
+ROLE="pmapa_user"
 SERVICES=(auth user travel post store stay message media notification)
 
 DB_HOST="${DB_HOST:-80.66.64.227}"
@@ -92,28 +99,28 @@ export PGHOST="$DB_HOST" PGPORT="$DB_PORT" PGUSER="$DB_ADMIN_USER" PGSSLMODE="$D
 
 echo "==> сервер ${DB_HOST}:${DB_PORT} (admin ${DB_ADMIN_USER}/${DB_ADMIN_DB}, sslmode=${DB_SSLMODE})"
 
-urls=""
+# Один пароль на единую роль pmapa_user (см. шапку). Пусто ⇒ заглушка change-me.
+PW="${PMAPA_DB_PASSWORD:-change-me}"
 placeholders=0
-for svc in "${SERVICES[@]}"; do
-	role="${PREFIX}${svc}"
-	db="$role"
-	var="$(printf '%s' "$svc" | tr '[:lower:]' '[:upper:]')_DB_PASSWORD"
-	pw="${!var:-change-me}"
-	[ "$pw" = "change-me" ] && placeholders=1
+[ "$PW" = "change-me" ] && placeholders=1
 
-	echo "==> роль и база ${db}"
+urls=""
+for svc in "${SERVICES[@]}"; do
+	db="${PREFIX}${svc}"
+
+	echo "==> роль ${ROLE} и база ${db}"
 	psql -d "$DB_ADMIN_DB" -v ON_ERROR_STOP=1 -q \
-		-v role="$role" -v db="$db" -v pw="$pw" -f database.sql
+		-v role="$ROLE" -v db="$db" -v pw="$PW" -f database.sql
 	psql -d "$db" -v ON_ERROR_STOP=1 -q -f extensions.sql
 
 	if [ "$WITH_TEST" = 1 ]; then
 		echo "==> база ${db}_test"
 		psql -d "$DB_ADMIN_DB" -v ON_ERROR_STOP=1 -q \
-			-v role="$role" -v db="${db}_test" -f test_database.sql
+			-v role="$ROLE" -v db="${db}_test" -f test_database.sql
 		psql -d "${db}_test" -v ON_ERROR_STOP=1 -q -f extensions.sql
 	fi
 
-	urls="${urls}$(printf '%s' "$svc" | tr '[:lower:]' '[:upper:]')_DATABASE_URL=postgres://${role}:${pw}@${DB_HOST}:${DB_PORT}/${db}?sslmode=${DB_SSLMODE}
+	urls="${urls}$(printf '%s' "$svc" | tr '[:lower:]' '[:upper:]')_DATABASE_URL=postgres://${ROLE}:${PW}@${DB_HOST}:${DB_PORT}/${db}?sslmode=${DB_SSLMODE}
 "
 done
 
@@ -126,9 +133,9 @@ EOF
 
 if [ "$placeholders" = 1 ]; then
 	cat <<EOF
-Пароли скрипт не выставлял. Задайте их сами, например:
+Пароль скрипт не выставлял. Задайте его сам, например:
 
-  psql -d postgres -c "ALTER ROLE ${PREFIX}travel PASSWORD 'ваш-пароль'"
+  psql -d postgres -c "ALTER ROLE ${ROLE} PASSWORD 'ваш-пароль'"
 
 и подставьте тот же пароль в URL выше (в prod он идёт отдельно, через
 PGPASSWORD — см. env/prod/<svc>/.env.example).

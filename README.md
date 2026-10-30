@@ -80,8 +80,8 @@ Invariants kept identical to production:
   from the client is stripped (verify: a call with `-H 'X-User-Id: forged'` and no
   token returns `401`).
 - **The stores are external, not containers.** Postgres lives on
-  `80.66.64.227:5432` (one database **and** one login role per service, both
-  named `pmapa_<svc>`) and Redis is a managed instance — see
+  `80.66.64.227:5432` (one database per service, `pmapa_<svc>`, all sharing the
+  single login role `pmapa_user`) and Redis is a managed instance — see
   [`env/db/external`](env/db/external) for provisioning. Nothing stateful runs
   in this compose, so local data survives even `docker compose down -v`.
 

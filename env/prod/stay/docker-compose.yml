@@ -10,10 +10,10 @@ services:
     environment:
       # ── fill by hand in .env ──
       # Only the password is a secret; the database is EXTERNAL — database
-      # pmapa_stay on 80.66.64.227, login role pmapa_stay (env/db/external).
+      # pmapa_stay on 80.66.64.227, shared login role pmapa_user (env/db/external).
       # btree_gist is pre-installed there by provision.sh.
-      DATABASE_URL: postgres://pmapa_stay@80.66.64.227:5432/pmapa_stay?sslmode=require
-      PGPASSWORD: ${STAY_POSTGRES_PASSWORD:?set STAY_POSTGRES_PASSWORD (role pmapa_stay)}
+      DATABASE_URL: postgres://pmapa_user@80.66.64.227:5432/pmapa_stay?sslmode=require
+      PGPASSWORD: ${PMAPA_DB_PASSWORD:?set PMAPA_DB_PASSWORD (shared role pmapa_user)}
       # ── baked defaults (edit here to change) ──
       STAY_HTTP_ADDR: ":8080"
       STAY_STATS_URL: "http://stats:8080"

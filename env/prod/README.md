@@ -6,8 +6,8 @@ all stores are external, so nothing on this box holds data.
     env/prod/<svc>   ── app tier (pulls an image, no state, no volumes)
           │
           ├─ DATABASE_URL  ──►  external Postgres 80.66.64.227:5432
-          │                     one database + one login role per service,
-          │                     both named pmapa_<svc> (see env/db/external)
+          │                     one database per service (pmapa_<svc>), one
+          │                     shared login role pmapa_user (see env/db/external)
           ├─ REDIS_URL     ──►  external managed Redis (auth + stats, db 0)
           └─ S3 + CDN      ──►  Cloudflare R2 + CDN (media bytes only)
 
@@ -50,9 +50,11 @@ network below.
   route out to the external Postgres/Redis and to Cloudflare.
 
 That is the only network now. With the stores off-box there is no per-service
-`<svc>-data` network left, and the isolation it used to give is enforced by the
-external server instead: each service has its own database **and** its own login
-role (`pmapa_<svc>`), so it can only reach its own data.
+`<svc>-data` network left. Each service still has its own database
+(`pmapa_<svc>`), but they all log in as one shared role `pmapa_user`: every
+service runs on the same host behind the database's IP firewall, so a leaked
+password exposes them all regardless — per-service roles would buy no real
+isolation. The trust boundary is the firewall, not the role.
 
 ## Deploy — databases first, gateway last
 
@@ -63,10 +65,10 @@ role (`pmapa_<svc>`), so it can only reach its own data.
     # 2. one-time: the external databases — idempotent, run from the repo root.
     # Creates role + database pmapa_<svc> and the pg_trgm/btree_gist extensions.
     PGPASSWORD=<admin-password> ./env/db/external/provision.sh
-    # The script never sets or changes passwords — you do, once per role:
-    # psql -h 80.66.64.227 -U postgres -c "ALTER ROLE pmapa_auth PASSWORD '...'"
+    # The script never sets or changes the password — you do, once:
+    # psql -h 80.66.64.227 -U postgres -c "ALTER ROLE pmapa_user PASSWORD '...'"
 
-    # 3. each service — fill its .env with those passwords (URLs are baked)
+    # 3. each service — fill its .env with that password (URLs are baked)
     cd env/prod/auth
     cp .env.example .env && $EDITOR .env
     docker compose pull && docker compose up -d
@@ -98,19 +100,19 @@ Scale a stateless service horizontally (the gateway load-balances via Docker DNS
   URL-encoding). Everything else (listen addr, TTLs, in-cluster URLs, ports,
   intervals) is baked too — change it by editing the file.
 - **Postgres is external.** Server `80.66.64.227:5432`, `sslmode=require`. Each
-  service owns the database `pmapa_<svc>` and logs in as the role `pmapa_<svc>`;
-  host, database and user are baked into its compose, only the password comes
-  from `.env`. Provision and extensions: [`env/db/external`](../db/external).
-  Moving one store to a different instance is editing the host on that single
-  service's URL line — nothing else moves.
+  service has its own database `pmapa_<svc>` and logs in as the shared role
+  `pmapa_user`; host, database and user are baked into its compose, only the
+  password comes from `.env`. Provision and extensions:
+  [`env/db/external`](../db/external). Moving one store to a different instance
+  is editing the host on that single service's URL line — nothing else moves.
 - **Redis is external and shared.** One managed instance
   (`generative-thorough-birthday-92146.db.redis.io:18624`, user `default`, db 0)
   serves `auth` and `stats`. Sharing it is safe because the key spaces do not
   overlap — `auth` writes `deny:*` / `dpop:*` / `fail:*`, `stats` writes
   `metric:*` — and neither service ever runs `FLUSHDB` or an unscoped
   `KEYS`/`SCAN`.
-- **Passwords — by name.** `<SVC>_POSTGRES_PASSWORD` is the password of the role
-  `pmapa_<svc>` on the external server. `AUTH_REDIS_PASSWORD` and
+- **Passwords.** `PMAPA_DB_PASSWORD` is the one Postgres password, for the shared
+  role `pmapa_user`, used by every service. `AUTH_REDIS_PASSWORD` and
   `STATS_REDIS_PASSWORD` are the same value — one instance, one password.
 - **Secrets.** `AUTH_SIGNING_KEY_SEED`, the DB/Redis passwords, SMTP creds and
   the R2 API token come from `.env` (git-ignored) — inject them from your secret

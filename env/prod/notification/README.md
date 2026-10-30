@@ -21,7 +21,7 @@ fails if unset.
 
 | Variable | Purpose |
 |----------|---------|
-| `NOTIFICATION_POSTGRES_PASSWORD` | Password of the role `pmapa_notification` on the external Postgres — host/db/user are baked. |
+| `PMAPA_DB_PASSWORD` | Shared Postgres password (role `pmapa_user`) — host and database (`pmapa_notification`) are baked. |
 | `NOTIFICATION_SMTP_HOST` | SMTP relay host. Set empty (`NOTIFICATION_SMTP_HOST=`) to log emails instead of sending. |
 
 ### Optional (in .env)
@@ -41,7 +41,7 @@ fails if unset.
 ## Requirements
 
 - **PostgreSQL** — external: database `pmapa_notification` on `80.66.64.227:5432`,
-  login role `pmapa_notification`, `sslmode=require`
+  shared login role `pmapa_user`, `sslmode=require`
   (see [env/db/external](../../db/external)).
 - An **SMTP relay** (via `NOTIFICATION_SMTP_*`) for real email; logs instead when host is empty.
 - Networks: `pmapa` only (service RPC + the routes out to the external Postgres and SMTP).

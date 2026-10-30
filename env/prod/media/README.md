@@ -20,7 +20,7 @@ no silent half-configured boot.
 
 | Variable | Secret? | Purpose |
 |----------|---------|---------|
-| `MEDIA_POSTGRES_PASSWORD` | yes | Password of the role `pmapa_media` on the external Postgres — host/db/user are baked. |
+| `PMAPA_DB_PASSWORD` | yes | Shared Postgres password (role `pmapa_user`) — host and database (`pmapa_media`) are baked. |
 | `R2_ACCESS_KEY_ID` | yes | R2 API token (R2 → Manage API Tokens), scoped to `s3-1` with *Object Read & Write*. Signs uploads. |
 | `R2_SECRET_ACCESS_KEY` | yes | Same token's secret — shown once on creation. |
 
@@ -28,7 +28,7 @@ Pass them however your deploy does it — a shell export, `docker compose
 --env-file`, or your orchestrator's secret store. Example:
 
 bash
-MEDIA_POSTGRES_PASSWORD=… R2_ACCESS_KEY_ID=… R2_SECRET_ACCESS_KEY=… \
+PMAPA_DB_PASSWORD=… R2_ACCESS_KEY_ID=… R2_SECRET_ACCESS_KEY=… \
 docker compose up -d
 
 ### Hardcoded in docker-compose.yml (edit the file to change)
@@ -41,7 +41,7 @@ docker compose up -d
 | `MEDIA_S3_PREFIX` | `media/` | Key prefix within the bucket. Must match the path the CDN domain serves: `https://cdn1.pmapa.com/media/<id>` → key `media/<id>`. |
 | `MEDIA_S3_PATH_STYLE` | `true` | Required on the `r2.cloudflarestorage.com` endpoint — it does not serve virtual-hosted bucket hosts. |
 | `MEDIA_S3_PUBLIC_BASE_URL` | `https://cdn1.pmapa.com` | CDN read origin — the custom domain bound to `s3-1` (R2 → `s3-1` → Settings → Custom Domains). **Not** the apex `pmapa.com`: an R2 custom domain takes over the whole hostname, and that one serves the front end and the gateway. |
-| `DATABASE_URL` | `postgres://pmapa_media@80.66.64.227:5432/pmapa_media?sslmode=require` | External Postgres; password-free — it arrives out-of-band via `PGPASSWORD`. |
+| `DATABASE_URL` | `postgres://pmapa_user@80.66.64.227:5432/pmapa_media?sslmode=require` | External Postgres (shared role `pmapa_user`); password-free — it arrives out-of-band via `PGPASSWORD`. |
 | `MEDIA_HTTP_ADDR` | `:8080` | In-network listen address. |
 
 Uploads still pass through this service (the bucket stays write-private, only
@@ -50,8 +50,8 @@ and new clients get the CDN URL straight from `UploadImage`.
 
 ## Requirements
 
-- **PostgreSQL** — external: database `pmapa_media` on `80.66.64.227:5432`, login
-  role `pmapa_media`, `sslmode=require` (see [env/db/external](../../db/external)).
+- **PostgreSQL** — external: database `pmapa_media` on `80.66.64.227:5432`, shared
+  login role `pmapa_user`, `sslmode=require` (see [env/db/external](../../db/external)).
 - **Cloudflare R2 bucket** `s3-1`, with `cdn1.pmapa.com` bound to it as a custom domain for public reads; only the token credentials arrive via `R2_*`.
 - Outbound HTTPS to `*.r2.cloudflarestorage.com` — the bucket is reached over the public internet.
 - Networks: `pmapa` only (service RPC + the routes out to the external Postgres and R2).

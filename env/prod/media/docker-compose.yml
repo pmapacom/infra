@@ -13,11 +13,11 @@ services:
     networks: [pmapa]   # peers + the external database + Cloudflare R2
     environment:
       # ── supplied at deploy time (secrets) ──
-      # The database is EXTERNAL — database pmapa_media on 80.66.64.227, login
-      # role pmapa_media (see env/db/external). The secrets are that role's
+      # The database is EXTERNAL — database pmapa_media on 80.66.64.227, shared
+      # login role pmapa_user (see env/db/external). The secrets are that role's
       # password and the Cloudflare R2 token.
-      DATABASE_URL: postgres://pmapa_media@80.66.64.227:5432/pmapa_media?sslmode=require
-      PGPASSWORD: ${MEDIA_POSTGRES_PASSWORD:?set MEDIA_POSTGRES_PASSWORD (role pmapa_media)}
+      DATABASE_URL: postgres://pmapa_user@80.66.64.227:5432/pmapa_media?sslmode=require
+      PGPASSWORD: ${PMAPA_DB_PASSWORD:?set PMAPA_DB_PASSWORD (shared role pmapa_user)}
       # R2 API token scoped to the bucket with Object Read & Write
       # (Cloudflare dashboard → R2 → Manage API Tokens) — not an account key.
       MEDIA_S3_ACCESS_KEY: ${R2_ACCESS_KEY_ID:?set R2_ACCESS_KEY_ID}

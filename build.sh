@@ -23,8 +23,8 @@ MODULES=(svckit auth user travel post store message media notification stats)
 # Сервисы с интеграционными тестами: у каждого своя база pmapa_<svc>_test
 # на ВНЕШНЕМ сервере.
 DB_SVCS=(auth user travel post store stay message media notification)
-# Префикс баз и login-ролей (см. env/db/external/provision.sh): база и
-# пользователь сервиса называются одинаково — pmapa_travel, pmapa_auth, …
+# Префикс баз (см. env/db/external/provision.sh): база каждого сервиса —
+# pmapa_<svc> (pmapa_travel, pmapa_auth, …); пользователь у всех один — pmapa_user.
 DB_PREFIX=pmapa_
 
 # URL внешней базы лежат в .env (<SVC>_DATABASE_URL — их печатает

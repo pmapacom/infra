@@ -1,9 +1,9 @@
 -- PMapa — база pmapa_<svc>_test для интеграционных тестов сервиса.
--- Роль уже создана database.sql; здесь только отдельная база под тесты, чтобы
--- TRUNCATE в тестах не трогал рабочие данные.
+-- Роль pmapa_user уже создана database.sql; здесь только отдельная база под
+-- тесты, чтобы TRUNCATE в тестах не трогал рабочие данные.
 --
 --   psql -d postgres -v ON_ERROR_STOP=1 \
---        -v role=pmapa_travel -v db=pmapa_travel_test -f test_database.sql
+--        -v role=pmapa_user -v db=pmapa_travel_test -f test_database.sql
 \set ON_ERROR_STOP on
 
 SELECT format('CREATE DATABASE %I OWNER %I', :'db', :'role')

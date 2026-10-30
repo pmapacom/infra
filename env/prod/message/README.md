@@ -17,7 +17,7 @@ fails if unset.
 
 | Variable | Purpose |
 |----------|---------|
-| `MESSAGE_POSTGRES_PASSWORD` | Password of the role `pmapa_message` on the external Postgres — host/db/user are baked. |
+| `PMAPA_DB_PASSWORD` | Shared Postgres password (role `pmapa_user`) — host and database (`pmapa_message`) are baked. |
 
 ### Baked into docker-compose.yml (edit the file to change)
 
@@ -32,8 +32,8 @@ fails if unset.
 
 ## Requirements
 
-- **PostgreSQL** — external: database `pmapa_message` on `80.66.64.227:5432`, login
-  role `pmapa_message`, `sslmode=require` (see [env/db/external](../../db/external)).
+- **PostgreSQL** — external: database `pmapa_message` on `80.66.64.227:5432`, shared
+  login role `pmapa_user`, `sslmode=require` (see [env/db/external](../../db/external)).
   The `pg_trgm` / `btree_gist` extensions are created by `provision.sh`.
 - In-cluster **user** / **stats** / **notification** (all optional, degrade gracefully).
 - Networks: `pmapa` only (service RPC + the route out to the external Postgres).

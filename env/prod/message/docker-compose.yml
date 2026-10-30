@@ -10,10 +10,10 @@ services:
     environment:
       # ── fill by hand in .env ──
       # Only the password is a secret; the database is EXTERNAL — database
-      # pmapa_message on 80.66.64.227, login role pmapa_message
+      # pmapa_message on 80.66.64.227, shared login role pmapa_user
       # (env/db/external). pg_trgm is pre-installed there by provision.sh.
-      DATABASE_URL: postgres://pmapa_message@80.66.64.227:5432/pmapa_message?sslmode=require
-      PGPASSWORD: ${MESSAGE_POSTGRES_PASSWORD:?set MESSAGE_POSTGRES_PASSWORD (role pmapa_message)}
+      DATABASE_URL: postgres://pmapa_user@80.66.64.227:5432/pmapa_message?sslmode=require
+      PGPASSWORD: ${PMAPA_DB_PASSWORD:?set PMAPA_DB_PASSWORD (shared role pmapa_user)}
       # ── baked defaults (edit here to change) ──
       MESSAGE_HTTP_ADDR: ":8080"
       MESSAGE_USER_URL: "http://user:8080"
