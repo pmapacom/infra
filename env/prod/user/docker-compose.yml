@@ -15,7 +15,7 @@ services:
       # Only the password is a secret; the database is EXTERNAL — database
       # pmapa_user on 80.66.64.227, login role pmapa_user (env/db/external).
       DATABASE_URL: postgres://pmapa_user@80.66.64.227:5432/pmapa_user?sslmode=require
-      PGPASSWORD: ${PMAPA_DB_PASSWORD:?set PMAPA_DB_PASSWORD (shared role pmapa_user)}
+      PGPASSWORD: ${USER_POSTGRES_PASSWORD:?set USER_POSTGRES_PASSWORD (shared role pmapa_user)}
       # Optional — comma-separated moderator user ids (unlocks the Moderation queue).
       USER_ADMIN_IDS: ${USER_ADMIN_IDS-}
       # ── baked defaults (edit here to change) ──

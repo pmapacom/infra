@@ -18,7 +18,7 @@ Vars marked **must set** are `${VAR:?}` in the compose — boot fails if unset.
 
 | Variable | Purpose |
 |----------|---------|
-| `PMAPA_DB_PASSWORD` | Shared Postgres password (role `pmapa_user`) — host and database (`pmapa_auth`) are baked. |
+| `AUTH_POSTGRES_PASSWORD` | Shared Postgres password (role `pmapa_user`) — host and database (`pmapa_auth`) are baked. |
 | `AUTH_REDIS_PASSWORD` | Password for the external Redis (session deny-list + DPoP replay). Same value as `STATS_REDIS_PASSWORD` (shared instance). |
 | `AUTH_SIGNING_KEY_SEED` | Base64 32-byte Ed25519 seed shared across replicas — `openssl rand -base64 32`. Empty ⇒ ephemeral per-process key (dev only). |
 

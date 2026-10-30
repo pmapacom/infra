@@ -111,9 +111,10 @@ Scale a stateless service horizontally (the gateway load-balances via Docker DNS
   overlap — `auth` writes `deny:*` / `dpop:*` / `fail:*`, `stats` writes
   `metric:*` — and neither service ever runs `FLUSHDB` or an unscoped
   `KEYS`/`SCAN`.
-- **Passwords.** `PMAPA_DB_PASSWORD` is the one Postgres password, for the shared
-  role `pmapa_user`, used by every service. `AUTH_REDIS_PASSWORD` and
-  `STATS_REDIS_PASSWORD` are the same value — one instance, one password.
+- **Passwords.** `<SVC>_POSTGRES_PASSWORD` is each service's Postgres password;
+  all nine carry the same value — they log in as the shared role `pmapa_user`.
+  `AUTH_REDIS_PASSWORD` and `STATS_REDIS_PASSWORD` are the same value — one
+  instance, one password.
 - **Secrets.** `AUTH_SIGNING_KEY_SEED`, the DB/Redis passwords, SMTP creds and
   the R2 API token come from `.env` (git-ignored) — inject them from your secret
   manager in a real cluster.

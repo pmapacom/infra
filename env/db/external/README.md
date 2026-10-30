@@ -75,10 +75,11 @@ Then use it:
 
 - **local dev** — paste it into the `<SVC>_DATABASE_URL` lines in the root
   `.env` (the script prints them already formatted, all with `pmapa_user`);
-- **cloud** (`env/prod/<svc>`) — put it in that service's `.env` as
-  `PMAPA_DB_PASSWORD`. The connection string there is baked and password-free;
-  the password reaches the service out-of-band via `PGPASSWORD`, so any
-  characters are fine — no URL-encoding.
+- **cloud** (`env/prod/<svc>`) — put it in that service's `.env` under its own
+  `<SVC>_POSTGRES_PASSWORD` (e.g. `AUTH_POSTGRES_PASSWORD`); all nine carry the
+  same value. The connection string there is baked and password-free; the
+  password reaches the service out-of-band via `PGPASSWORD`, so any characters
+  are fine — no URL-encoding.
 
 Re-running the script after an `ALTER ROLE` is safe: the existing role is left
 untouched and your password survives.

@@ -20,7 +20,7 @@ no silent half-configured boot.
 
 | Variable | Secret? | Purpose |
 |----------|---------|---------|
-| `PMAPA_DB_PASSWORD` | yes | Shared Postgres password (role `pmapa_user`) — host and database (`pmapa_media`) are baked. |
+| `MEDIA_POSTGRES_PASSWORD` | yes | Shared Postgres password (role `pmapa_user`) — host and database (`pmapa_media`) are baked. |
 | `R2_ACCESS_KEY_ID` | yes | R2 API token (R2 → Manage API Tokens), scoped to `s3-1` with *Object Read & Write*. Signs uploads. |
 | `R2_SECRET_ACCESS_KEY` | yes | Same token's secret — shown once on creation. |
 
@@ -28,7 +28,7 @@ Pass them however your deploy does it — a shell export, `docker compose
 --env-file`, or your orchestrator's secret store. Example:
 
 bash
-PMAPA_DB_PASSWORD=… R2_ACCESS_KEY_ID=… R2_SECRET_ACCESS_KEY=… \
+MEDIA_POSTGRES_PASSWORD=… R2_ACCESS_KEY_ID=… R2_SECRET_ACCESS_KEY=… \
 docker compose up -d
 
 ### Hardcoded in docker-compose.yml (edit the file to change)

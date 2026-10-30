@@ -21,7 +21,7 @@ fails if unset.
 
 | Variable | Purpose |
 |----------|---------|
-| `PMAPA_DB_PASSWORD` | Shared Postgres password (role `pmapa_user`) — host and database (`pmapa_notification`) are baked. |
+| `NOTIFICATION_POSTGRES_PASSWORD` | Shared Postgres password (role `pmapa_user`) — host and database (`pmapa_notification`) are baked. |
 | `NOTIFICATION_SMTP_HOST` | SMTP relay host. Set empty (`NOTIFICATION_SMTP_HOST=`) to log emails instead of sending. |
 
 ### Optional (in .env)

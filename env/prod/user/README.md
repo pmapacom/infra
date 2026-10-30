@@ -17,7 +17,7 @@ fails if unset.
 
 | Variable | Purpose |
 |----------|---------|
-| `PMAPA_DB_PASSWORD` | Shared Postgres password (role `pmapa_user`) — host and database (`pmapa_user`) are baked. |
+| `USER_POSTGRES_PASSWORD` | Shared Postgres password (role `pmapa_user`) — host and database (`pmapa_user`) are baked. |
 
 ### Optional (in .env)
 

@@ -21,7 +21,7 @@ fails if unset.
 
 | Variable | Purpose |
 |----------|---------|
-| `PMAPA_DB_PASSWORD` | Shared Postgres password (role `pmapa_user`) — host and database (`pmapa_stay`) are baked. |
+| `STAY_POSTGRES_PASSWORD` | Shared Postgres password (role `pmapa_user`) — host and database (`pmapa_stay`) are baked. |
 
 ### Baked into docker-compose.yml (edit the file to change)
 
