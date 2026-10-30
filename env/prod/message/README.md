@@ -1,8 +1,9 @@
 # env/prod/message — cloud app tier for the message service
 
 The **stateless** message service (1:1 + group chat, governance, live `Subscribe`
-stream, search, retention), deployed from a pre-built image. Mirror of the data
-tier in [env/prod/infra](../infra). No published port — reachable only
+stream, search, retention), deployed from a pre-built image. Its only store is
+the **external** managed Postgres — nothing stateful runs on this box.
+No published port — reachable only
 through the [gateway](../gateway). Scale: `docker compose up -d --scale message=3`.
 
 Full env-var reference: <https://github.com/pmapacom/message>.
@@ -16,7 +17,7 @@ fails if unset.
 
 | Variable | Purpose |
 |----------|---------|
-| `MESSAGE_POSTGRES_PASSWORD` | Postgres password — host/db/user are baked. Must equal `MESSAGE_POSTGRES_PASSWORD` in infra. |
+| `MESSAGE_POSTGRES_PASSWORD` | Password of the role `pmapa_message` on the external Postgres — host/db/user are baked. |
 
 ### Baked into docker-compose.yml (edit the file to change)
 
@@ -31,9 +32,11 @@ fails if unset.
 
 ## Requirements
 
-- **PostgreSQL** (via `DATABASE_URL`) — see [env/prod/infra](../infra).
+- **PostgreSQL** — external: database `pmapa_message` on `80.66.64.227:5432`, login
+  role `pmapa_message`, `sslmode=require` (see [env/db/external](../../db/external)).
+  The `pg_trgm` / `btree_gist` extensions are created by `provision.sh`.
 - In-cluster **user** / **stats** / **notification** (all optional, degrade gracefully).
-- Networks: `pmapa` (service RPC) + `message-data` (its store) — see [env/prod/infra](../infra).
+- Networks: `pmapa` only (service RPC + the route out to the external Postgres).
 
 ## Deploy
 

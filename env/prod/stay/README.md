@@ -1,8 +1,9 @@
 # env/prod/stay — cloud app tier for the stay service
 
 The **stateless** stay service (rent/buy listings, search filters and
-favourites), deployed from a pre-built image. Mirror of the data tier in
-[env/prod/infra](../infra). No published port — reachable only through the
+favourites), deployed from a pre-built image. Its only store is the **external**
+managed Postgres — nothing stateful runs on this box. No published port —
+reachable only through the
 [gateway](../gateway). Scale: `docker compose up -d --scale stay=3`.
 
 Browsing is public: the gateway routes `ListStays` and `GetStay` without
@@ -20,7 +21,7 @@ fails if unset.
 
 | Variable | Purpose |
 |----------|---------|
-| `STAY_POSTGRES_PASSWORD` | Postgres password — host/db/user are baked. Must equal `STAY_POSTGRES_PASSWORD` in infra. |
+| `STAY_POSTGRES_PASSWORD` | Password of the role `pmapa_stay` on the external Postgres — host/db/user are baked. |
 
 ### Baked into docker-compose.yml (edit the file to change)
 
@@ -30,8 +31,9 @@ fails if unset.
 
 ## Requirements
 
-- **PostgreSQL** (via `DATABASE_URL`) — see [env/prod/infra](../infra).
-- Networks: `pmapa` (service RPC) + `stay-data` (its store) — see [env/prod/infra](../infra).
+- **PostgreSQL** — external: database `pmapa_stay` on `80.66.64.227:5432`, login
+  role `pmapa_stay`, `sslmode=require` (see [env/db/external](../../db/external)).
+- Networks: `pmapa` only (service RPC + the route out to the external Postgres).
 
 ## Deploy
 

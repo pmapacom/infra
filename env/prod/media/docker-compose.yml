@@ -10,14 +10,14 @@ services:
   media:
     image: ghcr.io/pmapacom/media:latest
     restart: unless-stopped
-    networks: [pmapa, media-data]   # media-data carries media-postgres
+    networks: [pmapa]   # peers + the external database + Cloudflare R2
     environment:
       # ── supplied at deploy time (secrets) ──
-      # host/db/user are baked (known from env/prod/infra); the secrets are the
-      # Postgres password (must equal MEDIA_POSTGRES_PASSWORD in
-      # env/prod/infra) and the Cloudflare R2 token credentials.
-      DATABASE_URL: postgres://media@media-postgres:5432/media?sslmode=disable
-      PGPASSWORD: ${MEDIA_POSTGRES_PASSWORD:?set MEDIA_POSTGRES_PASSWORD (match infra)}
+      # The database is EXTERNAL — database pmapa_media on 80.66.64.227, login
+      # role pmapa_media (see env/db/external). The secrets are that role's
+      # password and the Cloudflare R2 token.
+      DATABASE_URL: postgres://pmapa_media@80.66.64.227:5432/pmapa_media?sslmode=require
+      PGPASSWORD: ${MEDIA_POSTGRES_PASSWORD:?set MEDIA_POSTGRES_PASSWORD (role pmapa_media)}
       # R2 API token scoped to the bucket with Object Read & Write
       # (Cloudflare dashboard → R2 → Manage API Tokens) — not an account key.
       MEDIA_S3_ACCESS_KEY: ${R2_ACCESS_KEY_ID:?set R2_ACCESS_KEY_ID}
@@ -47,8 +47,8 @@ services:
       # whole hostname, and that hostname belongs to the gateway and the front.
       MEDIA_S3_PUBLIC_BASE_URL: "https://cdn1.pmapa.com"
 
+# pmapa: shared app-tier network (peers by name) and the route out to the
+# external Postgres and Cloudflare R2.
 networks:
   pmapa:
-    external: true
-  media-data:
     external: true

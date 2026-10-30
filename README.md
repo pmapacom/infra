@@ -7,7 +7,7 @@ microservice backend, fronted by an nginx gateway that verifies tokens and is th
 single front door for every service.
 
 📦 **Infra repo:** <https://github.com/pmapacom/infra> — the public deploy units
-(gateway config, per-service data tiers, cloud composes, test contours).
+(gateway config, cloud composes, test contours).
 
 ## Repository layout
 
@@ -26,7 +26,7 @@ single front door for every service.
 | `telegrambot/` | Ops bot — polls `/readyz`/`/internal/logz`/`/internal/stats`, alerts + reports to Telegram (opt-in `--profile ops`) |
 | `svckit/` | Shared service toolkit — server/config/identity + Postgres helpers |
 | `proto/` | Protobuf schemas + generated Go (`proto/gen/go`) and Dart (`proto/gen/dart`) |
-| `env/` | Deploy units — gateway config, per-service data tiers, test contours |
+| `env/` | Deploy units — gateway config, external-store provisioning, cloud composes, test contours |
 | `DOC/` | Architecture docs ([backend](DOC/backend/README.md) · [app](DOC/app/README.md)) |
 | `docker-compose.yml` | **Full local dev stack** (see below) |
 
@@ -65,10 +65,12 @@ flutter run --dart-define=PMAPA_API_URL=http://localhost:8088
                   └──┬───┘               └──┬───┘       reachable only via gateway)
              ┌───────┴───────┐              │
              ▼               ▼              ▼
-      auth-postgres     auth-redis     user-postgres
-        :5432             :6379           :5433          ← published to 127.0.0.1
-      (revocation      (denylist +      (profiles)         for local inspection only
-       + accounts)      rate limits)
+             │               │              │
+             ▼               ▼              ▼
+      external Postgres 80.66.64.227:5432 (pmapa_<svc>)
+      external managed Redis (auth denylist + stats, db 0)
+                     ↑ no containers, no volumes — the data
+                       outlives `docker compose down -v`
 ```
 
 Invariants kept identical to production:
@@ -77,22 +79,24 @@ Invariants kept identical to production:
   gateway verifies the token and injects a trusted `X-User-Id` — a forged header
   from the client is stripped (verify: a call with `-H 'X-User-Id: forged'` and no
   token returns `401`).
-- **Data tier is the single source of truth**, on named volumes so local data
-  survives restarts. Postgres/Redis bind `127.0.0.1` only — dev-only, so you can
-  `psql -h localhost -p 5432 -U auth` / `redis-cli -p 6379` to inspect state.
+- **The stores are external, not containers.** Postgres lives on
+  `80.66.64.227:5432` (one database **and** one login role per service, both
+  named `pmapa_<svc>`) and Redis is a managed instance — see
+  [`env/db/external`](env/db/external) for provisioning. Nothing stateful runs
+  in this compose, so local data survives even `docker compose down -v`.
 
 ### Everyday commands
 
 ```bash
 docker compose logs -f auth   # tail a service
 docker compose up -d --build auth   # rebuild + restart one service
-docker compose down           # stop (named volumes keep their data)
-docker compose down -v        # stop and wipe all data
+docker compose down           # stop (external stores keep their data)
+docker compose down -v        # stop and wipe the MinIO volume only
 ```
 
 All nine services (`auth`, `user`, `travel`, `post`, `store`, `stats`,
-`message`, `media`, `notification`) run in the stack; each has its own data tier
-(Postgres per domain; `stats` uses Redis; `auth` adds Redis). The gateway routes
+`message`, `media`, `notification`) run in the stack; each owns its own external
+database `pmapa_<svc>` (`stats` uses Redis only; `auth` adds Redis). The gateway routes
 the versioned **client** domains (`pmapa.<domain>.v1`) plus the public `/media/`
 bytes location. **Internal** s2s contracts under `pmapa.api.*` (unversioned) are
 never routed — `pmapa.api.purge` (`PurgeUser`), `pmapa.api.email` (`SendEmail`),
@@ -112,6 +116,8 @@ accounts:
 
 ### Isolated stacks
 
-The composes under `env/` remain for narrower scenarios — a single service's data
-tier (`env/db/*`) or a self-contained CI test contour (`env/test/*`). They bind the
-same host ports as the root stack, so bring the root stack down before running one.
+The composes under `env/` remain for narrower scenarios — a single service's
+store (`env/db/*`) or a self-contained CI test contour (`env/test/*`). They bind
+the same host ports as the root stack, so bring the root stack down before
+running one. Cloud deploy units live in [`env/prod`](env/prod) — app tier only,
+no data tier.

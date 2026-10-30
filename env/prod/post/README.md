@@ -1,8 +1,9 @@
 # env/prod/post — cloud app tier for the post service
 
 The **stateless** post service (posts, likes/saves/comments, reviews, feed),
-deployed from a pre-built image. Mirror of the data tier in
-[env/prod/infra](../infra). No published port — reachable only through the
+deployed from a pre-built image. Its only store is the **external** managed
+Postgres — nothing stateful runs on this box. No published port — reachable
+only through the
 [gateway](../gateway). Scale: `docker compose up -d --scale post=3`.
 
 Full env-var reference: <https://github.com/pmapacom/post>.
@@ -16,7 +17,7 @@ fails if unset.
 
 | Variable | Purpose |
 |----------|---------|
-| `POST_POSTGRES_PASSWORD` | Postgres password — host/db/user are baked. Must equal `POST_POSTGRES_PASSWORD` in infra. |
+| `POST_POSTGRES_PASSWORD` | Password of the role `pmapa_post` on the external Postgres — host/db/user are baked. |
 
 ### Baked into docker-compose.yml (edit the file to change)
 
@@ -28,9 +29,10 @@ fails if unset.
 
 ## Requirements
 
-- **PostgreSQL** (via `DATABASE_URL`) — see [env/prod/infra](../infra).
+- **PostgreSQL** — external: database `pmapa_post` on `80.66.64.227:5432`, login
+  role `pmapa_post`, `sslmode=require` (see [env/db/external](../../db/external)).
 - In-cluster **user** service (feed); **stats** / **notification** optional.
-- Networks: `pmapa` (service RPC) + `post-data` (its store) — see [env/prod/infra](../infra).
+- Networks: `pmapa` only (service RPC + the route out to the external Postgres).
 
 ## Deploy
 

@@ -1,23 +1,26 @@
 # Cloud app tier for the stats service — stateless, scale to N replicas.
-# Defaults baked in below; fill only REDIS_URL in .env. INTERNAL-only, no port.
+# Defaults baked in below; fill only STATS_REDIS_PASSWORD in .env.
+# INTERNAL-only, no published port.
 name: pmapa-stats
 
 services:
   stats:
     image: ghcr.io/pmapacom/stats:latest
     restart: unless-stopped
-    networks: [pmapa, stats-data]
+    networks: [pmapa]
     environment:
       # ── fill by hand in .env ──
-      # Only the password is a secret; host is baked (known from env/prod/infra).
-      # Must equal STATS_REDIS_PASSWORD in env/prod/infra/.env.
-      REDIS_URL: redis://stats-redis:6379/0
-      REDIS_PASSWORD: ${STATS_REDIS_PASSWORD:?set STATS_REDIS_PASSWORD (match infra)}
+      # Redis is EXTERNAL (managed): host/user/db are baked below, only the
+      # password is a secret and it is passed OUT-OF-BAND (REDIS_PASSWORD),
+      # never inside the URL — so any characters are safe (no URL-encoding).
+      # One shared instance with auth is safe: stats keys are all `metric:*`,
+      # auth's are `deny:*`/`dpop:*`/`fail:*`, and neither service ever runs
+      # FLUSHDB or an unscoped KEYS/SCAN.
+      REDIS_URL: redis://default@generative-thorough-birthday-92146.db.redis.io:18624/0
+      REDIS_PASSWORD: ${STATS_REDIS_PASSWORD:?set STATS_REDIS_PASSWORD (external Redis)}
       # ── baked defaults (edit here to change) ──
       STATS_HTTP_ADDR: ":8080"
 
 networks:
   pmapa:
-    external: true
-  stats-data:
     external: true

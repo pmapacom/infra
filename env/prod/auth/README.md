@@ -1,8 +1,9 @@
 # env/prod/auth — cloud app tier for the auth service
 
 The **stateless** auth service (identity, sessions, DPoP, account deletion),
-deployed from a pre-built image. Mirror of the data tier in
-[env/prod/infra](../infra). No published port — reachable only through the
+deployed from a pre-built image. Both of its stores are **external** (managed
+Postgres + managed Redis) — nothing stateful runs on this box. No published
+port — reachable only through the
 [gateway](../gateway). Scale horizontally: `docker compose up -d --scale auth=3`.
 
 Full env-var reference (from the code) lives in the service repo:
@@ -17,8 +18,8 @@ Vars marked **must set** are `${VAR:?}` in the compose — boot fails if unset.
 
 | Variable | Purpose |
 |----------|---------|
-| `AUTH_POSTGRES_PASSWORD` | Postgres password — host/db/user are baked. Must equal `AUTH_POSTGRES_PASSWORD` in infra. |
-| `AUTH_REDIS_PASSWORD` | Redis password (session deny-list + DPoP replay). Must equal infra's. |
+| `AUTH_POSTGRES_PASSWORD` | Password for the external Postgres — host/db/user (`pmapa_auth`) are baked. |
+| `AUTH_REDIS_PASSWORD` | Password for the external Redis (session deny-list + DPoP replay). Same value as `STATS_REDIS_PASSWORD` (shared instance). |
 | `AUTH_SIGNING_KEY_SEED` | Base64 32-byte Ed25519 seed shared across replicas — `openssl rand -base64 32`. Empty ⇒ ephemeral per-process key (dev only). |
 
 ### Optional (in .env)
@@ -37,8 +38,13 @@ Vars marked **must set** are `${VAR:?}` in the compose — boot fails if unset.
 
 ## Requirements
 
-- **PostgreSQL** (via `DATABASE_URL`) and **Redis** (via `REDIS_URL`) — see [env/prod/infra](../infra).
-- Networks: `pmapa` (service RPC) + `auth-data` (its store) — both from [env/prod/infra](../infra); see [../README.md](../README.md).
+- **PostgreSQL** — external, `80.66.64.227:5432`, database and role `pmapa_auth`
+  (`sslmode=require`); see [env/db/external](../../db/external).
+- **Redis** — external managed instance
+  `generative-thorough-birthday-92146.db.redis.io:18624`, user `default`, db 0.
+  Keys are confined to `deny:*`, `dpop:*` and `fail:*`.
+- Network: `pmapa` only (service RPC + the route out to both stores); see
+  [../README.md](../README.md).
 - For working password resets: a reachable `notification` service + its SMTP config.
 
 ## Deploy

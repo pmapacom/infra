@@ -13,193 +13,21 @@
 #   • Only the GATEWAY is the front door for services — auth & user publish NO
 #     ports, so they are reachable only through nginx (client identity is never
 #     trusted; the gateway strips/injects X-User-Id).
-#   • The data tier is the single source of truth, on named volumes so local data
-#     SURVIVES restarts (unlike the ephemeral test contour in env/test/contour).
-#   • Postgres/Redis ARE published to localhost here — dev-only, so you can psql /
-#     redis-cli and inspect state. They bind 127.0.0.1 (not reachable off-box).
+#   • Postgres is EXTERNAL (80.66.64.227): one database AND one login role per
+#     service, both named pmapa_<svc> — e.g. travel ⇒ user pmapa_travel in
+#     database pmapa_travel (env/db/external/provision.sh creates them and
+#     prints the URLs). No pg container and no pgdata volume here, so the data
+#     outlives `down -v`.
+#   • Redis is EXTERNAL too (managed, db 0) — same instance as prod unless you
+#     override REDIS_URL in .env. No redis container, no redisdata volume.
+#   • MinIO IS published to localhost here — dev-only, so you can `mc` and
+#     inspect state. It binds 127.0.0.1 (not off-box).
 #
 # Point the Flutter app / contour tests at http://localhost:8088:
 #   flutter run --dart-define=CONTOUR_URL=http://localhost:8088
 name: pmapa
 
 services:
-  # ────────────────────────── auth data tier ──────────────────────────
-  auth-postgres:
-    image: postgres:17-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: auth
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: auth
-      POSTGRES_INITDB_ARGS: "--data-checksums"
-    ports:
-      - "127.0.0.1:${AUTH_POSTGRES_PORT:-5432}:5432"
-    volumes:
-      - auth-pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U auth -d auth"]
-      interval: 5s
-      timeout: 5s
-      retries: 15
-
-  auth-redis:
-    image: redis:7-alpine
-    restart: unless-stopped
-    environment:
-      REDIS_PASSWORD: ${REDIS_PASSWORD}
-    # Password + AOF persistence: the revocation denylist should survive restarts.
-    command:
-      - redis-server
-      - --requirepass
-      - ${REDIS_PASSWORD}
-      - --appendonly
-      - "yes"
-    ports:
-      - "127.0.0.1:${AUTH_REDIS_PORT:-6379}:6379"
-    volumes:
-      - auth-redisdata:/data
-    healthcheck:
-      test: ["CMD-SHELL", "redis-cli -a $${REDIS_PASSWORD} ping | grep -q PONG"]
-      interval: 5s
-      timeout: 5s
-      retries: 15
-
-  # ────────────────────────── user data tier ──────────────────────────
-  user-postgres:
-    image: postgres:17-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: user
-      POSTGRES_INITDB_ARGS: "--data-checksums"
-    # 5433 on the host so it runs alongside auth-postgres (5432).
-    ports:
-      - "127.0.0.1:${USER_POSTGRES_PORT:-5433}:5432"
-    volumes:
-      - user-pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U user -d user"]
-      interval: 5s
-      timeout: 5s
-      retries: 15
-
-  # ───────────────────────────── travel data tier ─────────────────────
-  travel-postgres:
-    image: postgres:17-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: travel
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: travel
-      POSTGRES_INITDB_ARGS: "--data-checksums"
-    # 5434 on the host so it runs alongside auth (5432) and user (5433).
-    ports:
-      - "127.0.0.1:${TRAVEL_POSTGRES_PORT:-5434}:5432"
-    volumes:
-      - travel-pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U travel -d travel"]
-      interval: 5s
-      timeout: 5s
-      retries: 15
-
-  # ───────────────────────────── post data tier ───────────────────────
-  post-postgres:
-    image: postgres:17-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: post
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: post
-      POSTGRES_INITDB_ARGS: "--data-checksums"
-    # 5435 on the host so it runs alongside auth (5432), user (5433), travel (5434).
-    ports:
-      - "127.0.0.1:${POST_POSTGRES_PORT:-5435}:5432"
-    volumes:
-      - post-pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U post -d post"]
-      interval: 5s
-      timeout: 5s
-      retries: 15
-
-  # ───────────────────────────── store data tier ─────────────────
-  store-postgres:
-    image: postgres:17-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: store
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: store
-      POSTGRES_INITDB_ARGS: "--data-checksums"
-    ports:
-      - "127.0.0.1:${STORE_POSTGRES_PORT:-5436}:5432"
-    volumes:
-      - store-pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U store -d store"]
-      interval: 5s
-      timeout: 5s
-      retries: 15
-
-  # ───────────────────────────── message data tier ───────────────
-  message-postgres:
-    image: postgres:17-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: message
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: message
-      POSTGRES_INITDB_ARGS: "--data-checksums"
-    ports:
-      - "127.0.0.1:${MESSAGE_POSTGRES_PORT:-5437}:5432"
-    volumes:
-      - message-pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U message -d message"]
-      interval: 5s
-      timeout: 5s
-      retries: 15
-
-  # ───────────────────────────── media data tier ─────────────────
-  media-postgres:
-    image: postgres:17-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: media
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: media
-      POSTGRES_INITDB_ARGS: "--data-checksums"
-    ports:
-      - "127.0.0.1:${MEDIA_POSTGRES_PORT:-5438}:5432"
-    volumes:
-      - media-pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U media -d media"]
-      interval: 5s
-      timeout: 5s
-      retries: 15
-
-  # ───────────────────────────── stay data tier ──────────────────
-  stay-postgres:
-    image: postgres:17-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: stay
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: stay
-      POSTGRES_INITDB_ARGS: "--data-checksums"
-    ports:
-      - "127.0.0.1:${STAY_POSTGRES_PORT:-5440}:5432"
-    volumes:
-      - stay-pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U stay -d stay"]
-      interval: 5s
-      timeout: 5s
-      retries: 15
-
   # ───────────────────────────── dev mail ─────────────────────────────
   # Mailpit catches all outgoing mail (password resets) so no real SMTP or
   # credentials are needed locally. Inbox UI: http://localhost:8025.
@@ -251,8 +79,12 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     environment:
-      DATABASE_URL: "postgres://auth:${POSTGRES_PASSWORD}@auth-postgres:5432/auth?sslmode=disable"
-      REDIS_URL: "redis://:${REDIS_PASSWORD}@auth-redis:6379/0"
+      # External database pmapa_auth, user pmapa_auth — see
+      # env/db/external/README.md.
+      DATABASE_URL: ${AUTH_DATABASE_URL:?set AUTH_DATABASE_URL (run env/db/external/provision.sh)}
+      # External Redis — password passed out-of-band, never inside the URL.
+      REDIS_URL: ${REDIS_URL:-redis://default@generative-thorough-birthday-92146.db.redis.io:18624/0}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD (external Redis)}
       AUTH_HTTP_ADDR: ":8080"
       AUTH_SIGNING_KEY_SEED: ${AUTH_SIGNING_KEY_SEED}
       AUTH_ACCESS_TTL: "10m"
@@ -276,10 +108,6 @@ services:
       AUTH_OIDC_GOOGLE_CLIENT_IDS: ${AUTH_OIDC_GOOGLE_CLIENT_IDS:-}
       AUTH_OIDC_APPLE_CLIENT_IDS: ${AUTH_OIDC_APPLE_CLIENT_IDS:-}
     depends_on:
-      auth-postgres:
-        condition: service_healthy
-      auth-redis:
-        condition: service_healthy
       notification:
         condition: service_started
       user:
@@ -292,7 +120,7 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     environment:
-      DATABASE_URL: "postgres://user:${POSTGRES_PASSWORD}@user-postgres:5432/user?sslmode=disable"
+      DATABASE_URL: ${USER_DATABASE_URL:?set USER_DATABASE_URL (run env/db/external/provision.sh)}
       USER_HTTP_ADDR: ":8080"
       USER_STATS_URL: ${USER_STATS_URL-http://stats:8080}
       USER_NOTIFICATION_URL: ${USER_NOTIFICATION_URL-http://notification:8080}
@@ -300,8 +128,6 @@ services:
       # user id to unlock the in-app Moderation queue.
       USER_ADMIN_IDS: ${USER_ADMIN_IDS:-}
     depends_on:
-      user-postgres:
-        condition: service_healthy
       stats:
         condition: service_started
       notification:
@@ -314,12 +140,10 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     environment:
-      DATABASE_URL: "postgres://travel:${POSTGRES_PASSWORD}@travel-postgres:5432/travel?sslmode=disable"
+      DATABASE_URL: ${TRAVEL_DATABASE_URL:?set TRAVEL_DATABASE_URL (run env/db/external/provision.sh)}
       TRAVEL_HTTP_ADDR: ":8080"
       TRAVEL_STATS_URL: ${TRAVEL_STATS_URL-http://stats:8080}
     depends_on:
-      travel-postgres:
-        condition: service_healthy
       stats:
         condition: service_started
     # No published ports — reachable only via the gateway.
@@ -330,14 +154,12 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     environment:
-      DATABASE_URL: "postgres://post:${POSTGRES_PASSWORD}@post-postgres:5432/post?sslmode=disable"
+      DATABASE_URL: ${POST_DATABASE_URL:?set POST_DATABASE_URL (run env/db/external/provision.sh)}
       POST_HTTP_ADDR: ":8080"
       POST_USER_URL: "http://user:8080"   # feed followees, in-cluster
       POST_STATS_URL: ${POST_STATS_URL-http://stats:8080}
       POST_NOTIFICATION_URL: ${POST_NOTIFICATION_URL-http://notification:8080}
     depends_on:
-      post-postgres:
-        condition: service_healthy
       user:
         condition: service_started
       stats:
@@ -352,12 +174,10 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     environment:
-      DATABASE_URL: "postgres://store:${POSTGRES_PASSWORD}@store-postgres:5432/store?sslmode=disable"
+      DATABASE_URL: ${STORE_DATABASE_URL:?set STORE_DATABASE_URL (run env/db/external/provision.sh)}
       STORE_HTTP_ADDR: ":8080"
       STORE_STATS_URL: ${STORE_STATS_URL-http://stats:8080}
     depends_on:
-      store-postgres:
-        condition: service_healthy
       stats:
         condition: service_started
     # No published ports — reachable only via the gateway.
@@ -368,12 +188,10 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     environment:
-      DATABASE_URL: "postgres://stay:${POSTGRES_PASSWORD}@stay-postgres:5432/stay?sslmode=disable"
+      DATABASE_URL: ${STAY_DATABASE_URL:?set STAY_DATABASE_URL (run env/db/external/provision.sh)}
       STAY_HTTP_ADDR: ":8080"
       STAY_STATS_URL: ${STAY_STATS_URL-http://stats:8080}
     depends_on:
-      stay-postgres:
-        condition: service_healthy
       stats:
         condition: service_started
     # No published ports — reachable only via the gateway.
@@ -384,15 +202,13 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     environment:
-      DATABASE_URL: "postgres://message:${POSTGRES_PASSWORD}@message-postgres:5432/message?sslmode=disable"
+      DATABASE_URL: ${MESSAGE_DATABASE_URL:?set MESSAGE_DATABASE_URL (run env/db/external/provision.sh)}
       MESSAGE_HTTP_ADDR: ":8080"
       # Fire-and-forget "message.new" events; empty ⇒ disabled.
       MESSAGE_NOTIFICATION_URL: ${MESSAGE_NOTIFICATION_URL-http://notification:8080}
       MESSAGE_STATS_URL: ${MESSAGE_STATS_URL-http://stats:8080}
       MESSAGE_USER_URL: ${MESSAGE_USER_URL-http://user:8080}   # DM block gate
     depends_on:
-      message-postgres:
-        condition: service_healthy
       notification:
         condition: service_started
       stats:
@@ -407,7 +223,7 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     environment:
-      DATABASE_URL: "postgres://media:${POSTGRES_PASSWORD}@media-postgres:5432/media?sslmode=disable"
+      DATABASE_URL: ${MEDIA_DATABASE_URL:?set MEDIA_DATABASE_URL (run env/db/external/provision.sh)}
       MEDIA_HTTP_ADDR: ":8080"
       # S3-compatible object storage — defaults to the local MinIO container.
       # Override MEDIA_S3_* in .env to point at a real provider; set
@@ -424,8 +240,6 @@ services:
       # to serve reads from the CDN instead — see .env.example.
       MEDIA_S3_PUBLIC_BASE_URL: ${MEDIA_S3_PUBLIC_BASE_URL-}
     depends_on:
-      media-postgres:
-        condition: service_healthy
       minio:
         condition: service_healthy
       minio-init:
@@ -450,30 +264,10 @@ services:
       NOTIFICATION_SMTP_PASSWORD: ${NOTIFICATION_SMTP_PASSWORD:-}
       NOTIFICATION_SMTP_FROM: ${NOTIFICATION_SMTP_FROM:-PMapa <no-reply@pmapa.app>}
       NOTIFICATION_RESET_URL_BASE: ${NOTIFICATION_RESET_URL_BASE:-}
-      NOTIFICATION_DATABASE_URL: "postgres://notification:${POSTGRES_PASSWORD}@notification-postgres:5432/notification?sslmode=disable"
+      NOTIFICATION_DATABASE_URL: ${NOTIFICATION_DATABASE_URL:?set NOTIFICATION_DATABASE_URL (run env/db/external/provision.sh)}
     depends_on:
       mailpit:
         condition: service_started
-      notification-postgres:
-        condition: service_healthy
-
-  notification-postgres:
-    image: postgres:17-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: notification
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: notification
-      POSTGRES_INITDB_ARGS: "--data-checksums"
-    ports:
-      - "127.0.0.1:${NOTIFICATION_POSTGRES_PORT:-5439}:5432"
-    volumes:
-      - notification-pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U notification -d notification"]
-      interval: 5s
-      timeout: 5s
-      retries: 15
 
   # ───────────────────────── telegrambot (ops) ─────────────────────────
   # Ops bot: polls every service's /readyz, /internal/logz and /internal/stats,
@@ -501,39 +295,17 @@ services:
 
   # ────────────────────────────── stats ───────────────────────────────
   # INTERNAL-ONLY metrics store: services push named metrics (Set/Inc) and
-  # read them back (Get/BatchGet); values live in stats-redis. No gateway
-  # route, no published port.
-  stats-redis:
-    image: redis:7-alpine
-    restart: unless-stopped
-    environment:
-      REDIS_PASSWORD: ${REDIS_PASSWORD}
-    # Password + AOF persistence: the metrics should survive restarts.
-    command:
-      - redis-server
-      - --requirepass
-      - ${REDIS_PASSWORD}
-      - --appendonly
-      - "yes"
-    volumes:
-      - stats-redisdata:/data
-    healthcheck:
-      test: ["CMD-SHELL", "redis-cli -a $${REDIS_PASSWORD} ping | grep -q PONG"]
-      interval: 5s
-      timeout: 5s
-      retries: 15
-
+  # read them back (Get/BatchGet); values live in the EXTERNAL Redis under
+  # `metric:*`. No gateway route, no published port.
   stats:
     build:
       context: ./stats
       dockerfile: Dockerfile
     restart: unless-stopped
     environment:
-      REDIS_URL: "redis://:${REDIS_PASSWORD}@stats-redis:6379/0"
+      REDIS_URL: ${REDIS_URL:-redis://default@generative-thorough-birthday-92146.db.redis.io:18624/0}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD (external Redis)}
       STATS_HTTP_ADDR: ":8080"
-    depends_on:
-      stats-redis:
-        condition: service_healthy
 
   # ──────────────────────────────── geo ───────────────────────────────
   # PUBLIC place dictionary: the ISO 3166-1 country list (embedded in the
@@ -582,15 +354,6 @@ services:
       - geo
 
 volumes:
-  auth-pgdata:
-  auth-redisdata:
-  stats-redisdata:
-  user-pgdata:
-  travel-pgdata:
-  post-pgdata:
-  store-pgdata:
-  stay-pgdata:
-  message-pgdata:
-  media-pgdata:
-  notification-pgdata:
+  # No *-pgdata and no *-redisdata: Postgres and Redis are both external now
+  # (env/db/external), so their data outlives `docker compose down -v`.
   minio-data:

@@ -1,39 +1,40 @@
 # env/prod — cloud deploy units (app tier)
 
-One `docker-compose.yml` **per service** (the stateless app tier), plus
-[`infra/`](infra) — the consolidated **data tier** for running the whole stack on
-one machine:
+One `docker-compose.yml` **per service**, and every one of them is **stateless**:
+all stores are external, so nothing on this box holds data.
 
-```
-        env/prod/<svc>   ── app tier    (pulls image, no state)
-              │  DATABASE_URL / REDIS_URL
-        env/prod/infra   ── data tier   (all Postgres/Redis on this box)
-                            └ later: extract a DB → managed, repoint one URL
+    env/prod/<svc>   ── app tier (pulls an image, no state, no volumes)
+          │
+          ├─ DATABASE_URL  ──►  external Postgres 80.66.64.227:5432
+          │                     one database + one login role per service,
+          │                     both named pmapa_<svc> (see env/db/external)
+          ├─ REDIS_URL     ──►  external managed Redis (auth + stats, db 0)
+          └─ S3 + CDN      ──►  Cloudflare R2 + CDN (media bytes only)
 
-   media bytes are NOT in either tier: they live in Cloudflare R2 and are read
-   through the Cloudflare CDN, so image traffic never touches this box.
-```
+There is **no data tier in this repo any more** — `env/prod/infra` is gone. No
+Postgres or Redis containers, no named volumes, no `<svc>-data` networks: a box
+running these composes can be wiped and rebuilt without losing state.
 
 These composes **pull pre-built images** from a registry. Defaults (image, listen
-addr, in-cluster URLs, ports) are baked into each compose; only the values with no
-sensible default — secrets, connection strings — come from `.env`.
+addr, in-cluster URLs, ports) are baked into each compose; only the values with
+no sensible default — secrets, connection strings — come from `.env`.
 
 ## What's here
 
 | Folder | Service | Published? |
 |--------|---------|------------|
-| `infra/` | **data tier** — all Postgres + Redis (on-box) | no |
 | `gateway/` | nginx front door (auth_request → routes by domain) | **yes** — the only public port |
-| `auth/` | auth (EdDSA JWT + DPoP + refresh) — needs Postgres + Redis | no |
-| `user/` | user/profile + follow graph — needs Postgres | no |
-| `travel/` | trips document store — needs Postgres | no |
-| `post/` | posts/feed — needs Postgres | no |
-| `store/` | goods classifieds — needs Postgres | no |
-| `stay/` | rent/buy listings — needs Postgres, **public browsing** | no |
-| `message/` | chat — needs Postgres | no |
-| `media/` | image uploads → Cloudflare R2, reads via the Cloudflare CDN — needs Postgres + an R2 bucket | no |
-| `notification/` | email + in-app feed + push — needs Postgres + SMTP | no |
-| `stats/` | metric store — needs Redis | no |
+| `front/` | Next.js web frontend (SSR, same-origin with the API) — no state, no `.env` | no |
+| `auth/` | auth (EdDSA JWT + DPoP + refresh) — external Postgres + Redis | no |
+| `user/` | user/profile + follow graph — external Postgres | no |
+| `travel/` | trips document store — external Postgres | no |
+| `post/` | posts/feed — external Postgres | no |
+| `store/` | goods classifieds — external Postgres | no |
+| `stay/` | rent/buy listings — external Postgres, **public browsing** | no |
+| `message/` | chat — external Postgres | no |
+| `media/` | image uploads → Cloudflare R2, reads via the CDN — external Postgres + an R2 bucket | no |
+| `notification/` | email + in-app feed + push — external Postgres + SMTP | no |
+| `stats/` | metric store — external Redis | no |
 | `geo/` | place dictionary (countries + cities) — no state, **public route** | no |
 | `telegrambot/` | ops alerts (opt-in) | no |
 
@@ -44,70 +45,76 @@ network below.
 
 ## Networks
 
-- **`pmapa`** — one shared network for service-to-service RPC. Created once by
-  hand (below); every app service + the gateway join it.
-- **`<svc>-data`** — one isolated, `internal` network per data tier, **owned by
-  [`infra/`](infra)**. Only that service's app tier joins it, so a service can
-  reach its own store and nothing else. See [`infra/README.md`](infra/README.md).
+- **`pmapa`** — the one shared network, for service-to-service RPC. Created once
+  by hand (below); every app service and the gateway join it. It is also the
+  route out to the external Postgres/Redis and to Cloudflare.
 
-So each app service is on **two** networks: `pmapa` (peers) + its `<svc>-data`
-(its database).
+That is the only network now. With the stores off-box there is no per-service
+`<svc>-data` network left, and the isolation it used to give is enforced by the
+external server instead: each service has its own database **and** its own login
+role (`pmapa_<svc>`), so it can only reach its own data.
 
-## Deploy — infra first, gateway last
+## Deploy — databases first, gateway last
 
-```bash
-# 1. one-time: the shared network + a registry login
-docker network create pmapa
-docker login ghcr.io
+    # 1. one-time: the shared network + a registry login
+    docker network create pmapa
+    docker login ghcr.io
 
-# 2. data tier — brings up all DBs/Redis and creates the <svc>-data networks
-cd env/prod/infra
-cp .env.example .env && $EDITOR .env      # set all passwords
-docker compose up -d
+    # 2. one-time: the external databases — idempotent, run from the repo root.
+    # Creates role + database pmapa_<svc> and the pg_trgm/btree_gist extensions.
+    PGPASSWORD=<admin-password> ./env/db/external/provision.sh
+    # The script never sets or changes passwords — you do, once per role:
+    # psql -h 80.66.64.227 -U postgres -c "ALTER ROLE pmapa_auth PASSWORD '...'"
 
-# 3. each service — fill its .env (connection strings already point at infra)
-cd ../auth
-cp .env.example .env && $EDITOR .env
-docker compose pull && docker compose up -d
-# repeat for user, travel, post, store, stay, message, media, notification, stats, geo
+    # 3. each service — fill its .env with those passwords (URLs are baked)
+    cd env/prod/auth
+    cp .env.example .env && $EDITOR .env
+    docker compose pull && docker compose up -d
+    # repeat for user, travel, post, store, stay, message, media,
+    # notification, stats, geo
 
-# 4. the front door, last (no .env needed)
-cd ../gateway && docker compose up -d
-```
+    # 4. the web frontend, then the front door, last (neither needs an .env)
+    cd ../front && docker compose pull && docker compose up -d
+    cd ../gateway && docker compose up -d
 
 Scale a stateless service horizontally (the gateway load-balances via Docker DNS):
 
-```bash
-cd env/prod/auth && docker compose up -d --scale auth=3
-```
+    cd env/prod/auth && docker compose up -d --scale auth=3
 
 ## Notes
 
 - **Images.** The image + tag is baked into each `docker-compose.yml`
-  (`image: ghcr.io/pmapacom/<svc>:latest`) — edit that line to pin a tag. Build +
-  push from the repo root, e.g. `docker build -f auth/Dockerfile -t ghcr.io/pmapacom/auth:latest . && docker push ghcr.io/pmapacom/auth:latest`.
+  (`image: ghcr.io/pmapacom/<svc>:latest`) — edit that line to pin a tag.
 - **`geo` has no `.env`.** It is the one service with no database and no
   secrets: both dictionaries are baked into its image, so a container is
   disposable. Its gateway route is **public** (no `auth_request`) — a place
   dictionary is not user data and `/explore` must work signed-out. That route
   ships in the gateway image, so adding it needs a gateway redeploy; until
   `geo` is up the route answers 502, which is why it is worth starting first.
-- **What goes in `.env`.** Only secrets — data-tier **passwords**, the signing
-  seed, SMTP creds. Connection strings are baked (password-free); the password is
-  handed to the service out-of-band via `PGPASSWORD` / `REDIS_PASSWORD`, so it may
-  contain any characters. Everything else (listen addr, TTLs, in-cluster URLs,
-  ports, intervals) is baked too — change it by editing the file.
-- **Data tier.** On one box it's [`infra/`](infra); each service composes its URL
-  from a baked container host + the password you set (`sslmode=disable`, safe
-  on-host). **Extracting a DB later:** stand up a managed instance, edit the host
-  + `sslmode` on that one service compose's URL line, update its password, and drop
-  the store from `infra/`. The `<svc>-data` network boundary means nothing else moves.
-- **Passwords must match — by name.** A service reads the **same variable name**
-  as `infra/.env` (e.g. `AUTH_POSTGRES_PASSWORD`), so keeping them in sync is just
-  putting the same value under the same name in both files.
-- **Secrets.** `AUTH_SIGNING_KEY_SEED`, DB passwords, SMTP creds and the R2 API
-  token come from `.env` (git-ignored) — inject them from your secret manager in
-  a real cluster.
+- **What goes in `.env`.** Only secrets — the Postgres/Redis **passwords**, the
+  signing seed, SMTP creds, the R2 token. Connection strings are baked and
+  password-free; the password is handed to the service out-of-band via
+  `PGPASSWORD` / `REDIS_PASSWORD`, so it may contain any characters (no
+  URL-encoding). Everything else (listen addr, TTLs, in-cluster URLs, ports,
+  intervals) is baked too — change it by editing the file.
+- **Postgres is external.** Server `80.66.64.227:5432`, `sslmode=require`. Each
+  service owns the database `pmapa_<svc>` and logs in as the role `pmapa_<svc>`;
+  host, database and user are baked into its compose, only the password comes
+  from `.env`. Provision and extensions: [`env/db/external`](../db/external).
+  Moving one store to a different instance is editing the host on that single
+  service's URL line — nothing else moves.
+- **Redis is external and shared.** One managed instance
+  (`generative-thorough-birthday-92146.db.redis.io:18624`, user `default`, db 0)
+  serves `auth` and `stats`. Sharing it is safe because the key spaces do not
+  overlap — `auth` writes `deny:*` / `dpop:*` / `fail:*`, `stats` writes
+  `metric:*` — and neither service ever runs `FLUSHDB` or an unscoped
+  `KEYS`/`SCAN`.
+- **Passwords — by name.** `<SVC>_POSTGRES_PASSWORD` is the password of the role
+  `pmapa_<svc>` on the external server. `AUTH_REDIS_PASSWORD` and
+  `STATS_REDIS_PASSWORD` are the same value — one instance, one password.
+- **Secrets.** `AUTH_SIGNING_KEY_SEED`, the DB/Redis passwords, SMTP creds and
+  the R2 API token come from `.env` (git-ignored) — inject them from your secret
+  manager in a real cluster.
 - **Media bytes leave the box.** `media` stores objects in Cloudflare R2 and
   serves reads from a CDN domain bound to that bucket, so image traffic never
   touches this host or the gateway. Only uploads pass through the app tier.

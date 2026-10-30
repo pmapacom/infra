@@ -1,8 +1,9 @@
 # env/prod/user — cloud app tier for the user service
 
 The **stateless** user service (profiles, follow graph, discovery, moderation),
-deployed from a pre-built image. Mirror of the data tier in
-[env/prod/infra](../infra). No published port — reachable only through the
+deployed from a pre-built image. Its only store is the **external** managed
+Postgres — nothing stateful runs on this box. No published port — reachable
+only through the
 [gateway](../gateway). Scale: `docker compose up -d --scale user=3`.
 
 Full env-var reference: <https://github.com/pmapacom/user>.
@@ -16,7 +17,7 @@ fails if unset.
 
 | Variable | Purpose |
 |----------|---------|
-| `USER_POSTGRES_PASSWORD` | Postgres password — host/db/user are baked. Must equal `USER_POSTGRES_PASSWORD` in infra. |
+| `USER_POSTGRES_PASSWORD` | Password of the role `pmapa_user` on the external Postgres — host/db/user are baked. |
 
 ### Optional (in .env)
 
@@ -33,8 +34,9 @@ fails if unset.
 
 ## Requirements
 
-- **PostgreSQL** (via `DATABASE_URL`) — see [env/prod/infra](../infra).
-- Networks: `pmapa` (service RPC) + `user-data` (its store) — see [env/prod/infra](../infra).
+- **PostgreSQL** — external: database `pmapa_user` on `80.66.64.227:5432`, login
+  role `pmapa_user`, `sslmode=require` (see [env/db/external](../../db/external)).
+- Networks: `pmapa` only (service RPC + the route out to the external Postgres).
 
 ## Deploy
 

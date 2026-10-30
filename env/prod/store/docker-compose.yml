@@ -6,19 +6,19 @@ services:
   store:
     image: ghcr.io/pmapacom/store:latest
     restart: unless-stopped
-    networks: [pmapa, store-data]
+    networks: [pmapa]
     environment:
       # ── fill by hand in .env ──
-      # Only the password is a secret; host/db/user are baked (known from
-      # env/prod/infra). Must equal STORE_POSTGRES_PASSWORD in env/prod/infra/.env.
-      DATABASE_URL: postgres://store@store-postgres:5432/store?sslmode=disable
-      PGPASSWORD: ${STORE_POSTGRES_PASSWORD:?set STORE_POSTGRES_PASSWORD (match infra)}
+      # Only the password is a secret; the database is EXTERNAL — database
+      # pmapa_store on 80.66.64.227, login role pmapa_store (env/db/external).
+      DATABASE_URL: postgres://pmapa_store@80.66.64.227:5432/pmapa_store?sslmode=require
+      PGPASSWORD: ${STORE_POSTGRES_PASSWORD:?set STORE_POSTGRES_PASSWORD (role pmapa_store)}
       # ── baked defaults (edit here to change) ──
       STORE_HTTP_ADDR: ":8080"
       STORE_STATS_URL: "http://stats:8080"
 
+# pmapa: shared app-tier network (peers by name) and the route out to the
+# external Postgres. No <svc>-data network — this service has no on-box store.
 networks:
   pmapa:
-    external: true
-  store-data:
     external: true

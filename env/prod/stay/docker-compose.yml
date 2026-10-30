@@ -6,19 +6,20 @@ services:
   stay:
     image: ghcr.io/pmapacom/stay:latest
     restart: unless-stopped
-    networks: [pmapa, stay-data]
+    networks: [pmapa]
     environment:
       # ── fill by hand in .env ──
-      # Only the password is a secret; host/db/user are baked (known from
-      # env/prod/infra). Must equal STAY_POSTGRES_PASSWORD in env/prod/infra/.env.
-      DATABASE_URL: postgres://stay@stay-postgres:5432/stay?sslmode=disable
-      PGPASSWORD: ${STAY_POSTGRES_PASSWORD:?set STAY_POSTGRES_PASSWORD (match infra)}
+      # Only the password is a secret; the database is EXTERNAL — database
+      # pmapa_stay on 80.66.64.227, login role pmapa_stay (env/db/external).
+      # btree_gist is pre-installed there by provision.sh.
+      DATABASE_URL: postgres://pmapa_stay@80.66.64.227:5432/pmapa_stay?sslmode=require
+      PGPASSWORD: ${STAY_POSTGRES_PASSWORD:?set STAY_POSTGRES_PASSWORD (role pmapa_stay)}
       # ── baked defaults (edit here to change) ──
       STAY_HTTP_ADDR: ":8080"
       STAY_STATS_URL: "http://stats:8080"
 
+# pmapa: shared app-tier network (peers by name) and the route out to the
+# external Postgres. No <svc>-data network — this service has no on-box store.
 networks:
   pmapa:
-    external: true
-  stay-data:
     external: true

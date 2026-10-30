@@ -13,17 +13,20 @@ services:
   auth:
     image: ghcr.io/pmapacom/auth:latest
     restart: unless-stopped
-    networks: [pmapa, auth-data]   # pmapa: reach other services · auth-data: reach auth-postgres/redis
+    networks: [pmapa]   # peers + the route out to the external Postgres/Redis
     environment:
       # ── fill these by hand in .env ──
       # Passwords are passed OUT-OF-BAND (PGPASSWORD / REDIS_PASSWORD), never in the
-      # URL — so any characters are safe (no URL-encoding needed). host/db/user are
-      # baked; they must equal AUTH_POSTGRES_PASSWORD / AUTH_REDIS_PASSWORD in
-      # env/prod/infra/.env. Extracting a DB later: edit the host + sslmode below.
-      DATABASE_URL: postgres://auth@auth-postgres:5432/auth?sslmode=disable
-      PGPASSWORD: ${AUTH_POSTGRES_PASSWORD:?set AUTH_POSTGRES_PASSWORD (match infra)}
-      REDIS_URL: redis://auth-redis:6379/0
-      REDIS_PASSWORD: ${AUTH_REDIS_PASSWORD:?set AUTH_REDIS_PASSWORD (match infra)}
+      # URL — so any characters are safe (no URL-encoding needed).
+      # Postgres is EXTERNAL: this service owns the database pmapa_auth on
+      # 80.66.64.227 and logs in as the role pmapa_auth (see env/db/external).
+      # Redis is EXTERNAL too (managed): user `default`, db 0. Sharing one
+      # instance with stats is safe — auth only writes `deny:*`, `dpop:*` and
+      # `fail:*`, stats only `metric:*`, and neither ever runs FLUSHDB.
+      DATABASE_URL: postgres://pmapa_auth@80.66.64.227:5432/pmapa_auth?sslmode=require
+      PGPASSWORD: ${AUTH_POSTGRES_PASSWORD:?set AUTH_POSTGRES_PASSWORD (role pmapa_auth)}
+      REDIS_URL: redis://default@generative-thorough-birthday-92146.db.redis.io:18624/0
+      REDIS_PASSWORD: ${AUTH_REDIS_PASSWORD:?set AUTH_REDIS_PASSWORD (external Redis)}
       AUTH_SIGNING_KEY_SEED: ${AUTH_SIGNING_KEY_SEED:?set a base64 32-byte seed}
       # Social login OAuth client ids (one per platform); all unset ⇒ disabled.
       # Only client ids are needed — no secrets, no key files. A Google client
@@ -56,10 +59,9 @@ services:
       AUTH_MESSAGE_URL: "http://message:8080"
       AUTH_MEDIA_URL: "http://media:8080"
 
-# pmapa: shared app-tier network (services resolve each other by name).
-# auth-data: this service's isolated data network (owned by env/prod/infra).
+# pmapa: shared app-tier network (services resolve each other by name) and the
+# route out to the external Postgres and Redis. Nothing stateful runs on this
+# box any more, so there is no <svc>-data network left.
 networks:
   pmapa:
-    external: true
-  auth-data:
     external: true

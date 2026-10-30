@@ -1,8 +1,9 @@
 # env/prod/notification — cloud app tier for the notification service
 
 The **stateless** notification service (outbound email via SMTP + in-app activity
-feed + push tokens/prefs), deployed from a pre-built image. Mirror of the data
-tier in [env/prod/infra](../infra). INTERNAL-only for `Notify` /
+feed + push tokens/prefs), deployed from a pre-built image. Its only store is
+the **external** managed Postgres — nothing stateful runs on this box.
+INTERNAL-only for `Notify` /
 `SendEmail` s2s; its read/prefs RPCs are gateway-routed. No published port. Scale:
 `docker compose up -d --scale notification=3`.
 
@@ -20,7 +21,7 @@ fails if unset.
 
 | Variable | Purpose |
 |----------|---------|
-| `NOTIFICATION_POSTGRES_PASSWORD` | Postgres password — host/db/user are baked. Must equal `NOTIFICATION_POSTGRES_PASSWORD` in infra. |
+| `NOTIFICATION_POSTGRES_PASSWORD` | Password of the role `pmapa_notification` on the external Postgres — host/db/user are baked. |
 | `NOTIFICATION_SMTP_HOST` | SMTP relay host. Set empty (`NOTIFICATION_SMTP_HOST=`) to log emails instead of sending. |
 
 ### Optional (in .env)
@@ -39,9 +40,11 @@ fails if unset.
 
 ## Requirements
 
-- **PostgreSQL** (via `NOTIFICATION_DATABASE_URL`) — see [env/prod/infra](../infra).
+- **PostgreSQL** — external: database `pmapa_notification` on `80.66.64.227:5432`,
+  login role `pmapa_notification`, `sslmode=require`
+  (see [env/db/external](../../db/external)).
 - An **SMTP relay** (via `NOTIFICATION_SMTP_*`) for real email; logs instead when host is empty.
-- Networks: `pmapa` (service RPC) + `notification-data` (its store) — see [env/prod/infra](../infra).
+- Networks: `pmapa` only (service RPC + the routes out to the external Postgres and SMTP).
 
 ## Deploy
 
